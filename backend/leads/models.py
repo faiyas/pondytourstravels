@@ -6,6 +6,7 @@ class Lead(models.Model):
         ('enquiry', 'New Enquiry (Form Submitted)'),
         ('whatsapp_clicked', 'WhatsApp Clicked'),
         ('contacted', 'Customer Contacted'),
+        ('quotation_sent', 'Quotation Sent'),
         ('converted', 'Converted to Booking'),
         ('lost', 'Lost / Cancelled'),
     ]

@@ -12,6 +12,7 @@ import {
   fetchAdminPricing,
   saveAdminPricing,
   trackAnalyticsEvent,
+  convertLeadToBooking,
   fetchAdminDrivers,
   createAdminDriver,
   updateAdminDriver,
@@ -383,8 +384,20 @@ Have a pleasant and safe journey with us!
     toast.success(`Opening WhatsApp voucher for ${b.customerName}`);
   };
 
-  const handleSaveBookingModal = async (e) => {
-    e.preventDefault();
+  const handleConvertLead = async (leadId) => {
+    const res = await convertLeadToBooking(leadId);
+    if (res.success) {
+      toast.success(res.message || "Lead converted to confirmed booking!");
+      loadLeads();
+      loadBookings();
+      loadStats();
+    } else {
+      toast.error(res.error || "Failed to convert lead");
+    }
+  };
+
+  const handleSaveBookingModal = async (e, force = false) => {
+    if (e) e.preventDefault();
     if (!editingBooking) return;
     setSavingBooking(true);
     const actualFare = roundVal(editingBooking.actualFare);
@@ -401,7 +414,19 @@ Have a pleasant and safe journey with us!
         advancePaid: advancePaid,
         balanceAmount: balanceAmount,
         adminNotes: editingBooking.adminNotes,
+        cancellationReason: editingBooking.cancellationReason,
+        force: force,
       });
+
+      if (res.hasConflict) {
+        if (window.confirm(`${res.conflictMessage}\n\nClick OK to confirm overlapping assignment.`)) {
+          return handleSaveBookingModal(null, true);
+        } else {
+          setSavingBooking(false);
+          return;
+        }
+      }
+
       if (res.success) {
         toast.success(`Booking ${editingBooking.bookingId} updated successfully`);
         setEditingBooking(null);
@@ -838,12 +863,24 @@ Have a pleasant and safe journey with us!
                               <option value="enquiry">New Enquiry</option>
                               <option value="whatsapp_clicked">WhatsApp Clicked</option>
                               <option value="contacted">Contacted</option>
+                              <option value="quotation_sent">Quotation Sent</option>
                               <option value="converted">Converted</option>
                               <option value="lost">Lost</option>
                             </select>
                           </td>
 
-                          <td className="p-3 text-right">
+                          <td className="p-3 text-right whitespace-nowrap space-x-1.5">
+                            {lead.status !== "converted" && (
+                              <button
+                                onClick={() => handleConvertLead(lead.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-black text-xs transition-colors shadow-sm"
+                                title="Convert this enquiry directly into a confirmed booking"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Confirm Booking</span>
+                              </button>
+                            )}
+
                             <a
                               href={`https://wa.me/${cleanPhoneForWhatsApp(lead.customerPhone)}?text=${encodeURIComponent(
                                 `Hello ${lead.customerName}, regarding your Pondy Tours ride enquiry from ${lead.pickup} to ${lead.drop}:`
@@ -903,7 +940,7 @@ Have a pleasant and safe journey with us!
                   ))}
                 </div>
 
-                {["all", "pending", "confirmed", "driver_assigned", "in_progress", "completed", "cancelled"].map(
+                {["all", "pending", "quotation_sent", "confirmed", "driver_assigned", "in_progress", "completed", "cancelled"].map(
                   (st) => (
                     <button
                       key={st}
@@ -1042,6 +1079,12 @@ Have a pleasant and safe journey with us!
                           <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">Vehicle Reg:</span>
                             <span className="font-bold uppercase tracking-wider text-foreground">{b.vehicleNumber}</span>
+                          </div>
+                        )}
+
+                        {b.cancellationReason && (
+                          <div className="p-2 rounded-lg bg-destructive/10 text-destructive text-[11px] font-semibold border border-destructive/20">
+                            <span className="font-bold">Cancellation:</span> {b.cancellationReason}
                           </div>
                         )}
 
@@ -1668,6 +1711,7 @@ Have a pleasant and safe journey with us!
                   className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="pending">Pending Confirmation</option>
+                  <option value="quotation_sent">Quotation Sent</option>
                   <option value="confirmed">Confirmed</option>
                   <option value="driver_assigned">Driver Assigned</option>
                   <option value="in_progress">Trip In Progress</option>
@@ -1675,6 +1719,21 @@ Have a pleasant and safe journey with us!
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
+
+              {editingBooking.status === "cancelled" && (
+                <div className="bg-destructive/10 p-3 rounded-xl border border-destructive/20 animate-fade-in">
+                  <label className="block text-xs font-black uppercase tracking-wider text-destructive mb-1">
+                    Cancellation Reason *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. Customer cancelled journey, found alternative cab, postponed..."
+                    value={editingBooking.cancellationReason || ""}
+                    onChange={(e) => setEditingBooking({ ...editingBooking, cancellationReason: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-destructive/40 rounded-xl text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-destructive"
+                  />
+                </div>
+              )}
 
               {/* Quick Select from Registered Drivers */}
               {drivers.length > 0 && (
@@ -1810,6 +1869,31 @@ Have a pleasant and safe journey with us!
                   className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-medium resize-none"
                 />
               </div>
+
+              {/* Booking Audit Timeline & History */}
+              {editingBooking.statusHistory && editingBooking.statusHistory.length > 0 && (
+                <div className="bg-muted/40 p-3 rounded-2xl border border-border">
+                  <details className="text-xs">
+                    <summary className="font-bold text-muted-foreground cursor-pointer hover:text-foreground flex items-center justify-between">
+                      <span>📜 Booking Timeline & History ({editingBooking.statusHistory.length})</span>
+                      <span className="text-[10px] text-primary">View Log</span>
+                    </summary>
+                    <div className="mt-2.5 space-y-2 pl-2 border-l-2 border-primary/40">
+                      {editingBooking.statusHistory.map((h, i) => (
+                        <div key={i} className="text-[11px]">
+                          <p className="font-bold text-foreground">
+                            {h.from ? `${h.from.toUpperCase()} ➔ ${h.to.toUpperCase()}` : (h.status || "Update").toUpperCase()}
+                          </p>
+                          <p className="text-muted-foreground">{h.note}</p>
+                          <p className="text-[10px] text-muted-foreground/70">
+                            {new Date(h.timestamp).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
 
               {/* Instant WhatsApp Dispatch Panel */}
               <div className="bg-muted/50 p-3.5 rounded-2xl border border-border space-y-2.5">

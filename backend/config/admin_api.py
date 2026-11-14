@@ -246,7 +246,7 @@ def admin_leads_list(request):
 @permission_classes([IsAuthenticated])
 def admin_lead_update(request, pk):
     """
-    Update status of an enquiry (e.g. contacted, converted, lost)
+    Update status of an enquiry (e.g. contacted, quotation_sent, converted, lost)
     """
     try:
         lead = Lead.objects.get(pk=pk)
@@ -259,6 +259,56 @@ def admin_lead_update(request, pk):
         lead.save()
 
     return Response({'success': True, 'leadId': lead.id, 'status': lead.status})
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_lead_convert(request, pk):
+    """
+    Converts an enquiry into a confirmed booking without duplicating customer details
+    """
+    try:
+        lead = Lead.objects.get(pk=pk)
+    except Lead.DoesNotExist:
+        return Response({'success': False, 'error': 'Lead enquiry not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    lead.status = 'converted'
+    lead.save()
+
+    booking = getattr(lead, 'booking', None)
+    if not booking:
+        booking_id = f"PTB-{lead.id + 1000}"
+        booking = Booking.objects.create(
+            booking_id=booking_id,
+            lead=lead,
+            status='confirmed',
+            actual_fare=round(float(lead.estimated_fare or 0)),
+            advance_paid=0.0,
+            balance_amount=round(float(lead.estimated_fare or 0)),
+            status_history=[{
+                'status': 'confirmed',
+                'timestamp': timezone.now().isoformat(),
+                'note': 'Converted from enquiry to confirmed booking by Admin',
+            }]
+        )
+    else:
+        booking.status = 'confirmed'
+        history = booking.status_history or []
+        history.append({
+            'status': 'confirmed',
+            'timestamp': timezone.now().isoformat(),
+            'note': 'Confirmed via Lead Conversion',
+        })
+        booking.status_history = history
+        booking.save()
+
+    return Response({
+        'success': True,
+        'bookingId': booking.booking_id,
+        'bookingDbId': booking.id,
+        'leadId': lead.id,
+        'message': f'Lead successfully converted to Booking {booking.booking_id}'
+    })
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication, SessionAuthentication])
@@ -296,6 +346,8 @@ def admin_bookings_list(request):
             'advancePaid': round(float(b.advance_paid)),
             'balanceAmount': round(float(b.balance_amount)),
             'adminNotes': b.admin_notes,
+            'cancellationReason': getattr(b, 'cancellation_reason', None),
+            'statusHistory': getattr(b, 'status_history', []) or [],
             'createdAt': b.created_at.isoformat(),
         })
 
@@ -306,7 +358,7 @@ def admin_bookings_list(request):
 @permission_classes([IsAuthenticated])
 def admin_booking_update(request, pk):
     """
-    Update booking dispatch details (assign driver, update status, record payments)
+    Update booking dispatch details (assign driver, update status, record payments, prevent overlapping assignments)
     """
     try:
         booking = Booking.objects.get(pk=pk)
@@ -314,8 +366,49 @@ def admin_booking_update(request, pk):
         return Response({'success': False, 'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
 
     data = request.data
+    force = data.get('force', False)
+    target_driver_phone = data.get('driverPhone')
+    target_driver_name = data.get('driverName')
+
+    # Overlapping driver assignment check
+    if not force and target_driver_phone and str(target_driver_phone).strip():
+        travel_date = booking.lead.travel_date
+        clean_target = ''.join(c for c in str(target_driver_phone) if c.isdigit())[-10:]
+        if len(clean_target) == 10:
+            active_same_day = Booking.objects.filter(
+                lead__travel_date=travel_date,
+                status__in=['driver_assigned', 'in_progress', 'confirmed']
+            ).exclude(pk=booking.pk)
+
+            for cb in active_same_day:
+                if cb.driver_phone:
+                    clean_cb = ''.join(c for c in str(cb.driver_phone) if c.isdigit())[-10:]
+                    if clean_cb == clean_target:
+                        return Response({
+                            'success': False,
+                            'hasConflict': True,
+                            'conflictType': 'driver',
+                            'conflictBookingId': cb.booking_id,
+                            'conflictMessage': f"Driver {target_driver_name or target_driver_phone} already has an active journey ({cb.booking_id} for {cb.lead.customer_name}) on {travel_date}. Do you want to proceed with overlapping assignment?",
+                        }, status=status.HTTP_409_CONFLICT)
+
+    # Status transition & audit history
     if 'status' in data:
-        booking.status = data['status']
+        new_status = data['status']
+        if new_status != booking.status:
+            history = getattr(booking, 'status_history', []) or []
+            history.append({
+                'from': booking.status,
+                'to': new_status,
+                'timestamp': timezone.now().isoformat(),
+                'note': data.get('cancellationReason') or data.get('adminNotes') or f"Status changed from {booking.status} to {new_status}",
+            })
+            booking.status_history = history
+            booking.status = new_status
+
+    if 'cancellationReason' in data:
+        booking.cancellation_reason = data['cancellationReason']
+
     if 'driverName' in data:
         booking.driver_name = data['driverName']
     if 'driverPhone' in data:

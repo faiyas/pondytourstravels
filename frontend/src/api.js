@@ -223,6 +223,18 @@ export async function updateLeadStatus(leadId, newStatus) {
   }
 }
 
+export async function convertLeadToBooking(leadId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/leads/${leadId}/convert/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function fetchAdminBookings(status = "all") {
   try {
     const url = new URL(`${API_BASE}/api/admin/bookings/`, window.location.origin);

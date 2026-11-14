@@ -63,6 +63,7 @@ class Vehicle(models.Model):
 class Booking(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending Confirmation'),
+        ('quotation_sent', 'Quotation Sent'),
         ('confirmed', 'Confirmed'),
         ('driver_assigned', 'Driver Assigned'),
         ('in_progress', 'Trip In Progress'),
@@ -84,6 +85,8 @@ class Booking(models.Model):
     balance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     admin_notes = models.TextField(blank=True, null=True)
+    cancellation_reason = models.TextField(blank=True, null=True)
+    status_history = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
