@@ -11,6 +11,8 @@ from config.admin_api import (
     admin_bookings_list,
     admin_booking_update,
     admin_pricing_manage,
+    admin_smtp_manage,
+    admin_smtp_test,
 )
 
 admin.site.site_header = "Pondy Tours & Travels Admin"
@@ -34,5 +36,7 @@ urlpatterns = [
     path('api/admin/bookings/', admin_bookings_list, name='admin_bookings_list'),
     path('api/admin/bookings/<int:pk>/', admin_booking_update, name='admin_booking_update'),
     path('api/admin/pricing/', admin_pricing_manage, name='admin_pricing_manage'),
+    path('api/admin/smtp/', admin_smtp_manage, name='admin_smtp_manage'),
+    path('api/admin/smtp/test/', admin_smtp_test, name='admin_smtp_test'),
 ]
 

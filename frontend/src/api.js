@@ -280,4 +280,53 @@ export async function saveAdminPricing(pricingList) {
   }
 }
 
+/**
+ * Fetch SMTP & Automated Email Configuration
+ */
+export async function fetchAdminSmtpSettings() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/smtp/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load SMTP settings");
+    return await res.json();
+  } catch (err) {
+    console.error("fetchAdminSmtpSettings error:", err);
+    return null;
+  }
+}
+
+/**
+ * Save SMTP & Automated Email Configuration
+ */
+export async function saveAdminSmtpSettings(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/smtp/`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Test SMTP Email Dispatch
+ */
+export async function testAdminSmtpSettings(testEmail) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/smtp/test/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ testEmail }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+
 
