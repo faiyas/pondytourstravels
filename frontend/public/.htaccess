@@ -1,0 +1,31 @@
+# ----------------------------------------------------------------------
+# LiteSpeed & Apache configuration for pondytourstravels.com
+# ----------------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Force one canonical host for Google: HTTPS + non-www
+  RewriteCond %{HTTPS} !=on [OR]
+  RewriteCond %{HTTP_HOST} ^www\.pondytourstravels\.com$ [NC]
+  RewriteRule ^ https://pondytourstravels.com%{REQUEST_URI} [L,R=301,NE]
+
+  # 2. Direct Access for Critical SEO & Verification Files
+  # Ensure robots.txt, sitemap.xml, and google verification HTML bypass all rewrites
+  RewriteCond %{REQUEST_URI} ^/robots\.txt$ [NC,OR]
+  RewriteCond %{REQUEST_URI} ^/sitemap\.xml$ [NC,OR]
+  RewriteCond %{REQUEST_URI} ^/google[a-zA-Z0-9]+\.html$ [NC]
+  RewriteRule ^ - [L]
+
+  # 3. React SPA Routing (History API fallback)
+  # If the requested path is not a file and not a directory, route to index.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Disable LiteSpeed's aggressive brute-force protection (which can trigger captcha blocks on crawler hits)
+<IfModule LiteSpeed>
+  WordPressProtect off
+</IfModule>

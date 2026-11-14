@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+>
+  <url>
+    <loc>https://pondytourstravels.com/</loc>
+    <image:image>
+      <image:loc>https://pondytourstravels.com/images/logo/dark.png</image:loc>
+      <image:title>Pondy Tours &amp; Travels logo</image:title>
+      <image:caption>Official logo of Pondy Tours &amp; Travels Pondicherry taxi service</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://pondytourstravels.com/images/logo/light.png</image:loc>
+      <image:title>Pondy Tours &amp; Travels logo light version</image:title>
+      <image:caption>Official light logo of Pondy Tours &amp; Travels</image:caption>
+    </image:image>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/privacy-policy/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/services/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/fleet/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/pricing/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/contact/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/about/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/routes/pondicherry-to-chennai-taxi/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/routes/chennai-to-pondicherry-taxi/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/routes/pondicherry-to-bangalore-taxi/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/routes/pondicherry-to-coimbatore-taxi/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/routes/pondicherry-to-madurai-taxi/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://pondytourstravels.com/terms-conditions/</loc>
+    <lastmod>2026-05-18</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
