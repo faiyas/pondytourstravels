@@ -23,6 +23,12 @@ class Lead(models.Model):
     customer_email = models.EmailField(blank=True, null=True)
     requirements = models.TextField(blank=True, null=True)
 
+    optional_stops = models.TextField(blank=True, null=True)
+    return_date = models.DateField(blank=True, null=True)
+    return_time = models.TimeField(blank=True, null=True)
+    passenger_count = models.IntegerField(default=1)
+    luggage_info = models.CharField(max_length=150, blank=True, null=True)
+
     distance_km = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     estimated_fare = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 

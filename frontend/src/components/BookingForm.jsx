@@ -6,7 +6,9 @@ import {
   markWhatsAppClicked, 
   getPricingMatrix, 
   DEFAULT_PRICING_MATRIX, 
-  trackAnalyticsEvent 
+  trackAnalyticsEvent,
+  isCustomerLoggedIn,
+  getCustomerUser
 } from "../api";
 import { 
   MapPin, 
@@ -23,7 +25,9 @@ import {
   Info,
   ShieldCheck,
   Star,
-  Navigation
+  Navigation,
+  Users,
+  Luggage
 } from "lucide-react";
 
 const GEOAPIFY_API_KEY = "0ee5cc5556904294a1c55cf28dbf98a5";
@@ -36,14 +40,32 @@ export default function BookingForm() {
     tripType: "oneway",
     pickup: "",
     drop: "",
+    optionalStops: "",
     travelDate: "",
     preferredTime: "",
+    returnDate: "",
+    returnTime: "",
     vehicleType: "",
+    passengerCount: 1,
+    luggageInfo: "",
     fullName: "",
     phone: "",
     email: "",
     requirements: "",
   });
+
+  useEffect(() => {
+    if (isCustomerLoggedIn()) {
+      const user = getCustomerUser();
+      if (user) {
+        setFormData((prev) => ({
+          ...prev,
+          fullName: prev.fullName || user.name || "",
+          phone: prev.phone || user.phone?.replace(/[^0-9]/g, "").slice(-10) || "",
+        }));
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function loadPricing() {
@@ -435,17 +457,16 @@ export default function BookingForm() {
 *Customer Details:*
 Name: ${formData.fullName}
 Phone: ${formData.phone}
-Email: ${formData.email || "N/A"}
-
+${formData.email ? `Email: ${formData.email}\n` : ""}
 *Trip Details:*
-Type: ${formData.tripType === "oneway" ? "One-Way" : "Round Trip"}
+Type: ${formData.tripType === "oneway" ? "One-Way Drop" : "Round Trip"}
 Pickup: ${formData.pickup}
 Drop: ${formData.drop}
-Date: ${formData.travelDate}
+${formData.optionalStops ? `Via / Stops: ${formData.optionalStops}\n` : ""}Date: ${formData.travelDate}
 Time: ${formData.preferredTime}
-Vehicle: ${formData.vehicleType.toUpperCase()}
-Distance: ${distance} km
-Estimated Fare: ₹${estimatedFare}
+${formData.tripType === "round" && formData.returnDate ? `Return Date: ${formData.returnDate} at ${formData.returnTime || "Flexible"}\n` : ""}Vehicle: ${formData.vehicleType.toUpperCase()}
+${formData.passengerCount > 1 ? `Passengers: ${formData.passengerCount}\n` : ""}${formData.luggageInfo ? `Luggage: ${formData.luggageInfo}\n` : ""}Distance: ${distance} km
+Estimated Fare: ₹${Math.round(Number(estimatedFare) || 0)}
 ${formData.requirements ? `Special Requirements: ${formData.requirements}` : ""}`;
 
   const openWhatsAppBooking = (bookingId) => {
@@ -460,9 +481,14 @@ ${formData.requirements ? `Special Requirements: ${formData.requirements}` : ""}
       tripType: "oneway",
       pickup: "",
       drop: "",
+      optionalStops: "",
       travelDate: "",
       preferredTime: "",
+      returnDate: "",
+      returnTime: "",
       vehicleType: "",
+      passengerCount: 1,
+      luggageInfo: "",
       fullName: "",
       phone: "",
       email: "",
@@ -737,6 +763,23 @@ ${formData.requirements ? `Special Requirements: ${formData.requirements}` : ""}
                   </div>
                 </div>
 
+                {/* Optional Intermediate Stops */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                      Optional Stops / Via Locations (Sightseeing or Break)
+                    </label>
+                    <span className="text-[10px] text-muted-foreground font-semibold">Optional</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.optionalStops}
+                    onChange={(e) => handleInputChange("optionalStops", e.target.value)}
+                    placeholder="E.g., Mahabalipuram, Tindivanam, Auroville..."
+                    className="w-full px-4 py-2 sm:py-2.5 bg-background border border-border rounded-xl text-xs sm:text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  />
+                </div>
+
                 <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
                   {/* Travel Date */}
                   <div>
@@ -811,6 +854,76 @@ ${formData.requirements ? `Special Requirements: ${formData.requirements}` : ""}
                           Innova Crysta (₹{pricingMatrix.crysta?.oneway_rate || pricingMatrix.crysta?.oneway || 23}/km)
                         </option>
                       </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Round Trip Return Date & Time */}
+                {formData.tripType === "round" && (
+                  <div className="grid md:grid-cols-2 gap-4 sm:gap-6 p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20 animate-fade-in">
+                    <div>
+                      <label className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider block mb-2">
+                        Return Journey Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.returnDate}
+                        min={formData.travelDate || getMinDate()}
+                        onChange={(e) => handleInputChange("returnDate", e.target.value)}
+                        className="w-full px-4 py-2.5 sm:py-3 bg-background border border-border rounded-xl text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider block mb-2">
+                        Return Reporting Time
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.returnTime}
+                        onChange={(e) => handleInputChange("returnTime", e.target.value)}
+                        className="w-full px-4 py-2.5 sm:py-3 bg-background border border-border rounded-xl text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Passenger Count & Luggage Info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                      Passenger Count (Vehicle Fit)
+                    </label>
+                    <div className="relative">
+                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <select
+                        value={formData.passengerCount}
+                        onChange={(e) => handleInputChange("passengerCount", parseInt(e.target.value) || 1)}
+                        className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border rounded-xl text-xs sm:text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none cursor-pointer"
+                      >
+                        <option value={1}>1 Passenger</option>
+                        <option value={2}>2 Passengers</option>
+                        <option value={3}>3 Passengers</option>
+                        <option value={4}>4 Passengers (Standard Sedan max)</option>
+                        <option value={5}>5 Passengers (Ertiga / Innova)</option>
+                        <option value={6}>6 Passengers (Ertiga / Innova)</option>
+                        <option value={7}>7 Passengers (Innova Crysta)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                      Luggage Details (Optional)
+                    </label>
+                    <div className="relative">
+                      <Luggage className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="E.g., 2 large suitcases, 1 backpack..."
+                        value={formData.luggageInfo}
+                        onChange={(e) => handleInputChange("luggageInfo", e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-background border border-border rounded-xl text-xs sm:text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
                     </div>
                   </div>
                 </div>

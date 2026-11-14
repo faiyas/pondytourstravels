@@ -583,6 +583,14 @@ export function isCustomerLoggedIn() {
   return !!getCustomerToken();
 }
 
+export function getCustomerUser() {
+  try {
+    return JSON.parse(localStorage.getItem("pondy_customer_user"));
+  } catch {
+    return null;
+  }
+}
+
 export async function customerRegister(payload) {
   try {
     const res = await fetch(`${API_BASE}/api/customer/register/`, {
@@ -609,6 +617,19 @@ export async function customerLogin(payload) {
   }
 }
 
+export async function customerResetPassword(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/reset-password/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function fetchCustomerBookings() {
   const token = getCustomerToken();
   try {
@@ -621,6 +642,40 @@ export async function fetchCustomerBookings() {
     return await res.json();
   } catch (err) {
     return { success: false, trips: [] };
+  }
+}
+
+export async function customerCancelBooking(bookingId, reason) {
+  const token = getCustomerToken();
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/bookings/${bookingId}/cancel/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Customer-Token": token } : {}),
+      },
+      body: JSON.stringify({ reason }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function customerSubmitFeedback(bookingId, rating, feedback) {
+  const token = getCustomerToken();
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/bookings/${bookingId}/feedback/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Customer-Token": token } : {}),
+      },
+      body: JSON.stringify({ rating, feedback }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 

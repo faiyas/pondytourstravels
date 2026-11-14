@@ -23,6 +23,11 @@ import DriverRegister from "./pages/driver/DriverRegister";
 import DriverOnboarding from "./pages/driver/DriverOnboarding";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 
+// Pondy RideCircle - Customer Portal (Mobile Auth - Optional Login - No Email)
+import CustomerLogin from "./pages/customer/CustomerLogin";
+import CustomerRegister from "./pages/customer/CustomerRegister";
+import CustomerDashboard from "./pages/customer/CustomerDashboard";
+
 export default function App() {
   return (
     <ThemeProvider defaultTheme="light">
@@ -49,6 +54,13 @@ export default function App() {
           <Route path="/driver/onboarding" element={<DriverOnboarding />} />
           <Route path="/driver/dashboard" element={<DriverDashboard />} />
           <Route path="/driver" element={<DriverDashboard />} />
+
+          {/* Pondy RideCircle - Customer Portal (Mobile Number Only - Optional Login - No Email) */}
+          <Route path="/customer/login" element={<CustomerLogin />} />
+          <Route path="/customer/register" element={<CustomerRegister />} />
+          <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+          <Route path="/customer" element={<CustomerDashboard />} />
+          <Route path="/my-bookings" element={<CustomerDashboard />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

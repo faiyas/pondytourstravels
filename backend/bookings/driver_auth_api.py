@@ -405,6 +405,7 @@ def customer_register(request):
     phone = clean_phone(data.get('phone', ''))
     password = data.get('password', '').strip()
     confirm_password = data.get('confirmPassword', '').strip()
+    recovery_pin = data.get('recoveryPin', '').strip()
 
     if not name or len(name) < 2:
         return Response({'success': False, 'error': 'Please provide your full name.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -425,6 +426,7 @@ def customer_register(request):
         name=name,
         phone=formatted_phone,
         password_hash=make_password(password),
+        recovery_pin_hash=make_password(recovery_pin) if recovery_pin else None,
         is_phone_verified=False,
         session_token=session_token,
         last_login_at=timezone.now(),
@@ -475,11 +477,62 @@ def customer_login(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def customer_reset_password(request):
+    """
+    Secure password reset for customer preventing unauthorized account takeover.
+    Requires either:
+    1) Current password verification, or
+    2) Matching security recovery PIN set during registration.
+    """
+    data = request.data
+    phone = clean_phone(data.get('phone', ''))
+    new_password = data.get('newPassword', '').strip()
+    confirm_password = data.get('confirmPassword', '').strip()
+    current_password = data.get('currentPassword', '').strip()
+    recovery_pin = data.get('recoveryPin', '').strip()
+
+    if not phone or len(phone) < 10:
+        return Response({'success': False, 'error': 'Please enter your 10-digit mobile number.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not new_password or len(new_password) < 6:
+        return Response({'success': False, 'error': 'New password must be at least 6 characters long.'}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != confirm_password:
+        return Response({'success': False, 'error': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    customer = Customer.objects.filter(phone__endswith=phone).first()
+    if not customer:
+        return Response({'success': False, 'error': 'No account found with this mobile number.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Verification: must match either current password or recovery PIN
+    verified = False
+    if current_password and check_password(current_password, customer.password_hash):
+        verified = True
+    elif recovery_pin and customer.recovery_pin_hash and check_password(recovery_pin, customer.recovery_pin_hash):
+        verified = True
+
+    if not verified:
+        return Response({
+            'success': False,
+            'error': 'Verification failed. Please provide your current password or 4-digit security PIN to reset your password, or contact 24/7 Dispatch Desk at +91 90252 32453 for identity assistance.'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    customer.password_hash = make_password(new_password)
+    customer.session_token = secrets.token_hex(24)
+    customer.save(update_fields=['password_hash', 'session_token'])
+
+    return Response({
+        'success': True,
+        'message': 'Password reset successfully. Please log in with your new password.'
+    })
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def customer_bookings_list(request):
     """
     View customer's trips and booking vouchers matching their mobile number.
+    Only exposes assigned driver contact details when trip has an assigned driver.
     """
     customer = get_authenticated_customer(request)
     if not customer:
@@ -491,21 +544,142 @@ def customer_bookings_list(request):
     trips = []
     for l in customer_leads:
         b = getattr(l, 'booking', None)
+        
+        # Privacy guard: only reveal driver phone and vehicle number if driver is actively assigned or trip ongoing/completed
+        has_driver = bool(b and b.driver_name and b.status in ['driver_assigned', 'in_progress', 'completed'])
+
         trips.append({
+            'id': b.id if b else l.id,
+            'leadId': l.id,
             'bookingId': b.booking_id if b else f"PTB-{l.id + 1000}",
+            'customerName': l.customer_name,
+            'customerPhone': l.customer_phone,
             'pickup': l.pickup,
             'drop': l.drop,
+            'optionalStops': getattr(l, 'optional_stops', None),
             'tripType': l.trip_type,
             'travelDate': str(l.travel_date),
             'preferredTime': str(l.preferred_time),
+            'returnDate': str(l.return_date) if getattr(l, 'return_date', None) else None,
+            'returnTime': str(l.return_time) if getattr(l, 'return_time', None) else None,
             'vehicleType': l.vehicle_type,
+            'passengerCount': getattr(l, 'passenger_count', 1),
+            'luggageInfo': getattr(l, 'luggage_info', None),
             'status': b.status if b else l.status,
-            'driverName': b.driver_name if b else None,
-            'driverPhone': b.driver_phone if b else None,
-            'vehicleNumber': b.vehicle_number if b else None,
-            'fare': round(float(b.actual_fare if b and b.actual_fare else l.estimated_fare or 0)),
-            'advancePaid': round(float(b.advance_paid if b else 0)),
-            'balanceAmount': round(float(b.balance_amount if b else l.estimated_fare or 0)),
+            'driverName': b.driver_name if has_driver else None,
+            'driverPhone': b.driver_phone if has_driver else None,
+            'vehicleNumber': b.vehicle_number if has_driver else None,
+            'fare': int(round(float(b.actual_fare if b and b.actual_fare else l.estimated_fare or 0))),
+            'advancePaid': int(round(float(b.advance_paid if b else 0))),
+            'balanceAmount': int(round(float(b.balance_amount if b else (b.actual_fare if b and b.actual_fare else l.estimated_fare or 0)))),
+            'cancellationRequested': getattr(b, 'cancellation_requested', False) if b else False,
+            'cancellationRequestReason': getattr(b, 'cancellation_request_reason', None) if b else None,
+            'customerRating': getattr(b, 'customer_rating', None) if b else None,
+            'customerFeedback': getattr(b, 'customer_feedback', None) if b else None,
+            'createdAt': (b.created_at if b else l.created_at).isoformat(),
         })
 
     return Response({'success': True, 'trips': trips})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def customer_cancel_booking(request, pk):
+    """
+    Allows authenticated customer to submit a cancellation request for their booking.
+    """
+    customer = get_authenticated_customer(request)
+    if not customer:
+        return Response({'success': False, 'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    phone_suffix = clean_phone(customer.phone)
+    try:
+        booking = Booking.objects.select_related('lead').get(pk=pk)
+    except Booking.DoesNotExist:
+        return Response({'success': False, 'error': 'Booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Security: Ensure this booking belongs to the authenticated customer
+    if not booking.lead.customer_phone.endswith(phone_suffix):
+        return Response({'success': False, 'error': 'Permission denied. This booking does not belong to your account.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if booking.status in ['completed', 'cancelled']:
+        return Response({'success': False, 'error': f'Booking is already {booking.status}.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    reason = request.data.get('reason', '').strip()
+    if not reason:
+        return Response({'success': False, 'error': 'Please provide a reason for cancellation.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    booking.cancellation_requested = True
+    booking.cancellation_request_reason = reason
+    booking.cancellation_reason = f"Customer cancellation request: {reason}"
+    
+    # If trip was still pending confirmation, mark cancelled immediately; if driver already assigned, flag for dispatch admin
+    if booking.status in ['pending', 'quotation_sent']:
+        booking.status = 'cancelled'
+
+    history = booking.status_history or []
+    history.append({
+        'status': booking.status,
+        'action': 'customer_cancellation_requested',
+        'note': f"Cancellation requested by passenger ({customer.name}): {reason}",
+        'timestamp': timezone.now().isoformat(),
+    })
+    booking.status_history = history
+    booking.save()
+
+    return Response({
+        'success': True,
+        'message': 'Cancellation request submitted successfully. Our dispatch team will process it immediately.',
+        'status': booking.status
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def customer_submit_feedback(request, pk):
+    """
+    Allows customer to submit rating (1-5 stars) and feedback for a completed trip.
+    """
+    customer = get_authenticated_customer(request)
+    if not customer:
+        return Response({'success': False, 'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    phone_suffix = clean_phone(customer.phone)
+    try:
+        booking = Booking.objects.select_related('lead', 'driver').get(pk=pk)
+    except Booking.DoesNotExist:
+        return Response({'success': False, 'error': 'Booking not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not booking.lead.customer_phone.endswith(phone_suffix):
+        return Response({'success': False, 'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        rating = int(request.data.get('rating', 5))
+        if rating < 1 or rating > 5:
+            rating = 5
+    except (ValueError, TypeError):
+        rating = 5
+
+    feedback_text = request.data.get('feedback', '').strip()
+
+    booking.customer_rating = rating
+    booking.customer_feedback = feedback_text
+    booking.feedback_submitted_at = timezone.now()
+    booking.save(update_fields=['customer_rating', 'customer_feedback', 'feedback_submitted_at'])
+
+    # Update driver rating average if driver exists
+    if booking.driver:
+        completed_trips_with_ratings = Booking.objects.filter(
+            driver=booking.driver,
+            status='completed',
+            customer_rating__isnull=False
+        )
+        if completed_trips_with_ratings.exists():
+            avg_rating = sum(b.customer_rating for b in completed_trips_with_ratings) / completed_trips_with_ratings.count()
+            booking.driver.rating = round(avg_rating, 1)
+            booking.driver.save(update_fields=['rating'])
+
+    return Response({
+        'success': True,
+        'message': 'Thank you for your valuable feedback! It helps us keep our service top-notch.'
+    })

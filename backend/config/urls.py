@@ -30,7 +30,10 @@ from bookings.driver_auth_api import (
     driver_duty_update_status,
     customer_register,
     customer_login,
+    customer_reset_password,
     customer_bookings_list,
+    customer_cancel_booking,
+    customer_submit_feedback,
 )
 
 admin.site.site_header = "Pondy Tours & Travels Admin"
@@ -71,9 +74,12 @@ urlpatterns = [
     path('api/driver/duties/', driver_duties_list, name='driver_duties_list'),
     path('api/driver/duties/<int:pk>/status/', driver_duty_update_status, name='driver_duty_update_status'),
 
-    # Customer Authentication (Mobile + Password - No Email)
+    # Customer Authentication & Portal (Mobile + Password - No Email)
     path('api/customer/register/', customer_register, name='customer_register'),
     path('api/customer/login/', customer_login, name='customer_login'),
+    path('api/customer/reset-password/', customer_reset_password, name='customer_reset_password'),
     path('api/customer/bookings/', customer_bookings_list, name='customer_bookings_list'),
+    path('api/customer/bookings/<int:pk>/cancel/', customer_cancel_booking, name='customer_cancel_booking'),
+    path('api/customer/bookings/<int:pk>/feedback/', customer_submit_feedback, name='customer_submit_feedback'),
 ]
 

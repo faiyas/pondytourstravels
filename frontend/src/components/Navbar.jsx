@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "./ThemeProvider";
-import { Phone, Sun, Moon, Menu, X, ArrowRight } from "lucide-react";
-import { trackAnalyticsEvent } from "../api";
+import { Phone, Sun, Moon, Menu, X, ArrowRight, Car } from "lucide-react";
+import { trackAnalyticsEvent, isCustomerLoggedIn } from "../api";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -107,7 +107,17 @@ export default function Navbar() {
           </nav>
 
           {/* Action Actions */}
-          <div className="hidden lg:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-3">
+            {/* Customer Portal Link (Optional Login) */}
+            <Link
+              to={isCustomerLoggedIn() ? "/customer/dashboard" : "/customer/login"}
+              className="text-xs font-bold px-3 py-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+              title="View your booking vouchers & assigned drivers"
+            >
+              <Car className="w-3.5 h-3.5" />
+              <span>My Bookings</span>
+            </Link>
+
             {/* Theme Toggle */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -165,6 +175,17 @@ export default function Navbar() {
                   {link.label}
                 </button>
               ))}
+              <Link
+                to={isCustomerLoggedIn() ? "/customer/dashboard" : "/customer/login"}
+                onClick={() => setIsOpen(false)}
+                className="w-full py-2.5 px-3 rounded-xl bg-primary/10 text-primary font-bold text-xs flex items-center justify-between border border-primary/20"
+              >
+                <div className="flex items-center gap-2">
+                  <Car className="w-4 h-4" />
+                  <span>My Bookings (Customer Portal)</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
               <button
                 onClick={() => handleNavClick("/")}
                 className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground font-bold py-3 rounded-lg btn-3d shadow-md flex items-center justify-center gap-2 text-sm"

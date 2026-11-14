@@ -27,11 +27,12 @@ export default function Footer() {
 
   const quickLinks = [
     { label: "Booking Center", path: "/" },
+    { label: "Customer Portal (My Bookings)", path: "/customer/login" },
+    { label: "Driver Partner (RideCircle)", path: "/driver/login" },
     { label: "About Pondy Tours", path: "/about" },
     { label: "Our Services", path: "/services" },
     { label: "Premium Fleet", path: "/fleet" },
     { label: "Pricing Matrix", path: "/pricing" },
-    { label: "Driver Partner (RideCircle)", path: "/driver/login" },
     { label: "Contact Support", path: "/contact" },
   ];
 
