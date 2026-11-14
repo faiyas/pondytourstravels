@@ -797,10 +797,18 @@ ${formData.requirements ? `Special Requirements: ${formData.requirements}` : ""}
                         required
                       >
                         <option value="">Choose Vehicle...</option>
-                        <option value="sedan">Sedan (₹14/km)</option>
-                        <option value="muv">MUV/SUV Ertiga (₹19/km)</option>
-                        <option value="innova">Innova (₹20/km)</option>
-                        <option value="crysta">Innova Crysta (₹23/km)</option>
+                        <option value="sedan">
+                          Sedan (₹{pricingMatrix.sedan?.oneway_rate || pricingMatrix.sedan?.oneway || 14}/km)
+                        </option>
+                        <option value="muv">
+                          MUV/SUV Ertiga (₹{pricingMatrix.muv?.oneway_rate || pricingMatrix.muv?.oneway || 19}/km)
+                        </option>
+                        <option value="innova">
+                          Innova (₹{pricingMatrix.innova?.oneway_rate || pricingMatrix.innova?.oneway || 20}/km)
+                        </option>
+                        <option value="crysta">
+                          Innova Crysta (₹{pricingMatrix.crysta?.oneway_rate || pricingMatrix.crysta?.oneway || 23}/km)
+                        </option>
                       </select>
                     </div>
                   </div>

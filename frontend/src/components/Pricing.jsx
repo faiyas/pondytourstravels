@@ -1,39 +1,113 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Check, Info, ArrowRight } from "lucide-react";
+import { getPricingMatrix, DEFAULT_PRICING_MATRIX } from "../api";
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [pricingMatrix, setPricingMatrix] = useState(DEFAULT_PRICING_MATRIX);
+
+  useEffect(() => {
+    async function loadPricing() {
+      const matrix = await getPricingMatrix();
+      if (matrix && Object.keys(matrix).length > 0) {
+        setPricingMatrix(matrix);
+      }
+    }
+    loadPricing();
+  }, []);
+
+  const getRate = (code, tripType, fallback) => {
+    const config = pricingMatrix[code] || DEFAULT_PRICING_MATRIX[code];
+    if (!config) return String(fallback);
+    if (tripType === "oneway") {
+      const val = config.oneway_rate ?? config.oneway ?? fallback;
+      return String(Number(val));
+    }
+    const val = config.roundtrip_rate ?? config.round ?? fallback;
+    return String(Number(val));
+  };
+
+  const getMinDistance = (code, tripType, fallback) => {
+    const config = pricingMatrix[code] || DEFAULT_PRICING_MATRIX[code];
+    if (!config) return fallback;
+    if (tripType === "oneway") {
+      const km = config.min_oneway_km ?? config.minOnewayKm ?? 130;
+      return `${km} KM`;
+    }
+    const km = config.min_roundtrip_km ?? config.minRoundKm ?? 250;
+    return `${km} KM`;
+  };
+
+  const getAllowance = (code, fallback) => {
+    const config = pricingMatrix[code] || DEFAULT_PRICING_MATRIX[code];
+    if (!config) return String(fallback);
+    const val = config.driver_allowance ?? config.driverAllowance ?? fallback;
+    return String(Number(val));
+  };
+
   const pricingData = [
     {
       name: "SEDAN",
       description: "Perfect for up to 4 passengers",
-      oneWay: { rate: "14", minDistance: "130 KM", allowance: "400" },
-      roundTrip: { rate: "12", minDistance: "250 KM", allowance: "400" },
+      oneWay: {
+        rate: getRate("sedan", "oneway", 14),
+        minDistance: getMinDistance("sedan", "oneway", "130 KM"),
+        allowance: getAllowance("sedan", 400),
+      },
+      roundTrip: {
+        rate: getRate("sedan", "round", 12),
+        minDistance: getMinDistance("sedan", "round", "250 KM"),
+        allowance: getAllowance("sedan", 400),
+      },
       features: ["AC Vehicle", "Professional Driver", "GPS Tracking", "24/7 Support", "Comfortable Seating"],
       popular: false,
     },
     {
       name: "MUV/SUV",
       description: "Ideal for 4-7 passengers",
-      oneWay: { rate: "19", minDistance: "130 KM", allowance: "400" },
-      roundTrip: { rate: "16", minDistance: "250 KM", allowance: "400" },
+      oneWay: {
+        rate: getRate("muv", "oneway", 19),
+        minDistance: getMinDistance("muv", "oneway", "130 KM"),
+        allowance: getAllowance("muv", 400),
+      },
+      roundTrip: {
+        rate: getRate("muv", "round", 16),
+        minDistance: getMinDistance("muv", "round", "250 KM"),
+        allowance: getAllowance("muv", 400),
+      },
       features: ["Spacious Interior", "AC Vehicle", "Luggage Space", "Professional Driver", "GPS Tracking", "24/7 Support"],
       popular: false,
     },
     {
       name: "INNOVA",
       description: "Premium 6+1 AC Vehicle",
-      oneWay: { rate: "20", minDistance: "130 KM", allowance: "500" },
-      roundTrip: { rate: "18", minDistance: "250 KM", allowance: "500" },
+      oneWay: {
+        rate: getRate("innova", "oneway", 20),
+        minDistance: getMinDistance("innova", "oneway", "130 KM"),
+        allowance: getAllowance("innova", 500),
+      },
+      roundTrip: {
+        rate: getRate("innova", "round", 18),
+        minDistance: getMinDistance("innova", "round", "250 KM"),
+        allowance: getAllowance("innova", 500),
+      },
       features: ["INNOVA 6+1 AC", "Professional Driver", "GPS Navigation", "24/7 Support", "Extra Legroom", "Large Boot Space", "Premium Comfort"],
       popular: true,
     },
     {
       name: "INNOVA CRYSTA",
       description: "Luxury 6+1 AC Vehicle",
-      oneWay: { rate: "23", minDistance: "130 KM", allowance: "500" },
-      roundTrip: { rate: "21", minDistance: "250 KM", allowance: "500" },
+      oneWay: {
+        rate: getRate("crysta", "oneway", 23),
+        minDistance: getMinDistance("crysta", "oneway", "130 KM"),
+        allowance: getAllowance("crysta", 500),
+      },
+      roundTrip: {
+        rate: getRate("crysta", "round", 21),
+        minDistance: getMinDistance("crysta", "round", "250 KM"),
+        allowance: getAllowance("crysta", 500),
+      },
       features: ["INNOVA CRYSTA 6+1 AC", "Professional Driver", "Advanced GPS Navigation", "Premium Sound System", "Multiple USB Ports", "Extra Large Boot Space", "Luxury Comfort Seating", "Leather Upholstery", "Climate Control"],
       popular: false,
     },

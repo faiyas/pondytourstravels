@@ -260,3 +260,4 @@ def admin_pricing_manage(request):
                 is_active=item.get('isActive', True),
             )
         return Response({'success': True, 'message': 'Vehicle pricing matrix updated successfully.'})
+
