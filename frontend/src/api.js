@@ -3,7 +3,10 @@
  * Connects the React Frontend to the Django REST Backend
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE = 
+  (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== "")
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "")
+    : "https://8001-agq5qlr2uletnjyzudtddvxrdq.instabox.tech";
 
 /**
  * Fallback local pricing matrix in case backend API is unreachable

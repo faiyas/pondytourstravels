@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { adminLogin, isAdminLoggedIn } from "../../api";
 import { toast } from "sonner";
-import { ShieldCheck, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
+import { ShieldCheck, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (isAdminLoggedIn()) {
@@ -19,8 +20,11 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     if (!username.trim() || !password.trim()) {
-      toast.error("Please enter both username and password.");
+      const err = "Please enter both username and password.";
+      setErrorMessage(err);
+      toast.error(err);
       return;
     }
 
@@ -31,10 +35,14 @@ export default function AdminLogin() {
         toast.success(`Welcome back, ${res.user.username}!`);
         navigate("/admin");
       } else {
-        toast.error(res.error || "Invalid username or password");
+        const err = res.error || "Invalid username or password";
+        setErrorMessage(err);
+        toast.error(err);
       }
     } catch (err) {
-      toast.error("Unable to connect to the backend server. Please try again.");
+      const msg = err.message || "Unable to connect to the backend server. Please try again.";
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -119,6 +127,13 @@ export default function AdminLogin() {
               </div>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold flex items-start gap-2 animate-fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -141,3 +156,4 @@ export default function AdminLogin() {
     </div>
   );
 }
+
