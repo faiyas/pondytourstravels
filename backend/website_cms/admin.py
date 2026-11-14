@@ -7,3 +7,4 @@ class SiteSettingAdmin(admin.ModelAdmin):
         'contact_phone', 'contact_whatsapp', 'contact_email',
         'is_announcement_active', 'announcement_banner_text', 'updated_at'
     )
+

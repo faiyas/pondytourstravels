@@ -19,3 +19,4 @@ def track_event(request):
     except Exception as e:
         pass
     return Response({'success': True})
+

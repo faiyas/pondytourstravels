@@ -41,3 +41,4 @@ class Lead(models.Model):
 
     def __str__(self):
         return f"Lead #{self.id} - {self.customer_name} ({self.pickup} to {self.drop})"
+

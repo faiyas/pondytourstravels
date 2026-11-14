@@ -13,3 +13,4 @@ class VehiclePricingAdmin(admin.ModelAdmin):
         'driver_allowance_per_day', 'is_active'
     )
     search_fields = ('display_name', 'vehicle_code')
+

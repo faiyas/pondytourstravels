@@ -21,3 +21,4 @@ class BookingAdmin(admin.ModelAdmin):
     def get_route(self, obj):
         return f"{obj.lead.pickup} -> {obj.lead.drop}"
     get_route.short_description = 'Route'
+

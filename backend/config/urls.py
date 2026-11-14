@@ -17,3 +17,4 @@ urlpatterns = [
     path('api/pricing/', get_pricing_matrix, name='pricing_matrix'),
     path('api/analytics/track/', track_event, name='track_event'),
 ]
+

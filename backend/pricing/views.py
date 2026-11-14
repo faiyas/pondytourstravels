@@ -21,3 +21,4 @@ def get_pricing_matrix(request):
             'over_400km_allowance': float(v.over_400km_driver_allowance),
         }
     return Response(data)
+

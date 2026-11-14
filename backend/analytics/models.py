@@ -23,3 +23,4 @@ class AnalyticsEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} on {self.page_path} at {self.created_at:%Y-%m-%d %H:%M}"
+

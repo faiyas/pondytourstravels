@@ -26,3 +26,4 @@ class VehiclePricing(models.Model):
 
     def __str__(self):
         return f"{self.display_name} - ₹{self.oneway_rate_per_km}/km"
+

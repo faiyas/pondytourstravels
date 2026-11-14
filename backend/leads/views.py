@@ -58,3 +58,4 @@ def track_whatsapp_click(request, lead_id):
         return Response({'success': True, 'message': 'WhatsApp click recorded.'})
     except Lead.DoesNotExist:
         return Response({'success': False, 'error': 'Lead not found'}, status=status.HTTP_404_NOT_FOUND)
+
