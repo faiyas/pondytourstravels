@@ -329,12 +329,12 @@ export async function saveAdminSmtpSettings(payload) {
 /**
  * Test SMTP Email Dispatch
  */
-export async function testAdminSmtpSettings(testEmail) {
+export async function testAdminSmtpSettings(testEmail, settings = {}) {
   try {
     const res = await fetch(`${API_BASE}/api/admin/smtp/test/`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ testEmail }),
+      body: JSON.stringify({ ...settings, testEmail }),
     });
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {

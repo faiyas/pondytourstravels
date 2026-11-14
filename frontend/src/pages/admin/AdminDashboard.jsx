@@ -42,6 +42,8 @@ import {
   Send,
   Key,
   Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -100,6 +102,7 @@ export default function AdminDashboard() {
   const [savingSmtp, setSavingSmtp] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState("");
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
   // Auth Guard
   useEffect(() => {
@@ -144,7 +147,6 @@ export default function AdminDashboard() {
       setSmtpSettings((prev) => ({
         ...prev,
         ...data,
-        smtpPassword: "", // keep blank on client so we don't accidentally wipe
       }));
       if (data.adminNotificationEmail) {
         setTestEmailAddress(data.adminNotificationEmail);
@@ -244,9 +246,13 @@ export default function AdminDashboard() {
       toast.error("Please provide a recipient email address to receive the test.");
       return;
     }
+    if (!smtpSettings.smtpUser || !smtpSettings.smtpPassword) {
+      toast.error("Please enter both SMTP Username and App Password first.");
+      return;
+    }
     setTestingSmtp(true);
     toast.info(`Sending test verification email to ${target}...`);
-    const res = await testAdminSmtpSettings(target);
+    const res = await testAdminSmtpSettings(target, smtpSettings);
     setTestingSmtp(false);
     if (res.success) {
       toast.success(res.message || "Test email delivered successfully!");
@@ -990,13 +996,27 @@ export default function AdminDashboard() {
                       <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
                         SMTP Password / App Password
                       </label>
-                      <input
-                        type="password"
-                        placeholder={smtpSettings.hasPassword ? "•••••••••••••••• (Configured)" : "Enter App Password"}
-                        value={smtpSettings.smtpPassword}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpPassword: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showSmtpPassword ? "text" : "password"}
+                          placeholder={smtpSettings.hasPassword ? "•••••••••••••••• (Configured)" : "Enter 16-character App Password"}
+                          value={smtpSettings.smtpPassword || ""}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpPassword: e.target.value })}
+                          className="w-full pl-3 pr-10 py-2 bg-background border border-border rounded-xl text-sm font-bold tracking-wide"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors"
+                          title={showSmtpPassword ? "Hide Password" : "Show Password"}
+                        >
+                          {showSmtpPassword ? (
+                            <EyeOff className="w-4 h-4 text-primary" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div>

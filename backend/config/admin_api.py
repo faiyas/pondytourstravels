@@ -302,6 +302,7 @@ def admin_smtp_manage(request):
             'smtpHost': config.smtp_host,
             'smtpPort': config.smtp_port,
             'smtpUser': config.smtp_user or '',
+            'smtpPassword': config.smtp_password or '',
             'hasPassword': bool(config.smtp_password),
             'useTls': config.use_tls,
             'useSsl': config.use_ssl,
@@ -353,10 +354,10 @@ def admin_smtp_manage(request):
 @permission_classes([IsAuthenticated])
 def admin_smtp_test(request):
     """
-    Dispatches a test verification email using the configured SMTP settings.
+    Dispatches a test verification email using configured or submitted SMTP settings.
     """
     test_email = request.data.get('testEmail')
-    success, message = send_smtp_test_email(test_email)
+    success, message = send_smtp_test_email(test_email, override_config=request.data)
     if success:
         return Response({'success': True, 'message': message})
     return Response({'success': False, 'error': message}, status=status.HTTP_400_BAD_REQUEST)

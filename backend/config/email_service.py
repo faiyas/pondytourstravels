@@ -447,32 +447,61 @@ Thank you for choosing Pondy Tours & Travels!
         return False
 
 
-def send_smtp_test_email(test_to_email=None):
+def send_smtp_test_email(test_to_email=None, override_config=None):
     """
-    Sends a test verification email using the currently configured SMTP parameters.
+    Sends a test verification email using configured or overridden parameters.
     """
     config = SMTPSettings.get_settings()
-    backend = get_smtp_backend(config)
-    if not backend:
-        return False, "SMTP user or password is missing in configuration."
 
-    recipient = test_to_email or config.admin_notification_email or config.from_email
+    host = config.smtp_host
+    port = config.smtp_port
+    user = config.smtp_user
+    password = config.smtp_password
+    use_tls = config.use_tls
+    use_ssl = config.use_ssl
+    from_name = config.from_name
+    from_email = config.from_email
+
+    if override_config:
+        if override_config.get('smtpHost'): host = override_config['smtpHost'].strip()
+        if override_config.get('smtpPort'): port = int(override_config['smtpPort'])
+        if override_config.get('smtpUser'): user = override_config['smtpUser'].strip()
+        if override_config.get('smtpPassword'): password = override_config['smtpPassword'].strip()
+        if 'useTls' in override_config: use_tls = bool(override_config['useTls'])
+        if 'useSsl' in override_config: use_ssl = bool(override_config['useSsl'])
+        if override_config.get('fromName'): from_name = override_config['fromName'].strip()
+        if override_config.get('fromEmail'): from_email = override_config['fromEmail'].strip()
+
+    if not user or not password:
+        return False, "SMTP Username or App Password is missing. Please enter your email and App Password."
+
+    recipient = test_to_email or (override_config and override_config.get('adminNotificationEmail')) or config.admin_notification_email or from_email
     if not recipient:
         return False, "No recipient email address specified for test."
 
     subject = "🧪 SMTP Test Verification - Pondy Tours & Travels"
-    from_email_str = f"{config.from_name} <{config.from_email}>"
+    from_email_str = f"{from_name} <{from_email}>"
     body = f"""
 Hello,
 
-This is a test email from Pondy Tours & Travels Admin Dashboard.
-Your SMTP connection ({config.smtp_host}:{config.smtp_port}) is working properly!
+This is a test verification email from Pondy Tours & Travels Admin Dashboard.
+Your SMTP connection ({host}:{port}) is working properly!
 
 Timestamp: Automated Test Dispatched
-Admin Receiver: {config.admin_notification_email}
+Admin Alert Receiver: {recipient}
     """.strip()
 
     try:
+        backend = EmailBackend(
+            host=host,
+            port=port,
+            username=user,
+            password=password,
+            use_tls=use_tls,
+            use_ssl=use_ssl,
+            timeout=12,
+            fail_silently=False,
+        )
         msg = EmailMultiAlternatives(
             subject=subject,
             body=body,
@@ -481,6 +510,7 @@ Admin Receiver: {config.admin_notification_email}
             connection=backend
         )
         msg.send(fail_silently=False)
-        return True, f"Test email successfully sent to {recipient}"
+        return True, f"Test email successfully sent to {recipient}!"
     except Exception as e:
         return False, str(e)
+
