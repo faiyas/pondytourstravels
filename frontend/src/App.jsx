@@ -17,6 +17,12 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
+// Pondy RideCircle - Driver Portal (Mobile Auth - No Email)
+import DriverLogin from "./pages/driver/DriverLogin";
+import DriverRegister from "./pages/driver/DriverRegister";
+import DriverOnboarding from "./pages/driver/DriverOnboarding";
+import DriverDashboard from "./pages/driver/DriverDashboard";
+
 export default function App() {
   return (
     <ThemeProvider defaultTheme="light">
@@ -36,6 +42,13 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+          {/* Pondy RideCircle - Driver Partner Portal (Mobile Number Only - No Email) */}
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver/register" element={<DriverRegister />} />
+          <Route path="/driver/onboarding" element={<DriverOnboarding />} />
+          <Route path="/driver/dashboard" element={<DriverDashboard />} />
+          <Route path="/driver" element={<DriverDashboard />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -7,19 +7,45 @@ class Driver(models.Model):
         ('on_duty', 'On Duty / In Trip'),
         ('suspended', 'Suspended'),
         ('pending', 'Pending Approval'),
+        ('rejected', 'Application Rejected'),
     ]
 
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=30, unique=True)
+    password_hash = models.CharField(max_length=128, blank=True, null=True)
+    is_phone_verified = models.BooleanField(default=False)
+    session_token = models.CharField(max_length=64, blank=True, null=True)
+
+    # Driver Profile & Address
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, default='Pondicherry')
+    emergency_contact = models.CharField(max_length=30, blank=True, null=True)
+    experience_years = models.IntegerField(default=1)
+
+    # Driving License & ID Documents
     license_number = models.CharField(max_length=50, blank=True, null=True)
+    license_expiry = models.DateField(null=True, blank=True)
+    aadhaar_number = models.CharField(max_length=30, blank=True, null=True)
+
+    # Vehicle Registration & Compliance Documents
+    vehicle_category = models.CharField(max_length=30, default='sedan')
     vehicle_model = models.CharField(max_length=100, blank=True, null=True)
     vehicle_number = models.CharField(max_length=50, blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
-    documents_approved = models.BooleanField(default=True)
+    rc_number = models.CharField(max_length=50, blank=True, null=True)
+    insurance_expiry = models.DateField(null=True, blank=True)
+    fitness_expiry = models.DateField(null=True, blank=True)
+
+    # Onboarding Status & Admin Review
+    onboarding_step = models.IntegerField(default=1)
+    documents_approved = models.BooleanField(default=False)
+    admin_review_notes = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=4.9)
     total_trips = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -28,6 +54,23 @@ class Driver(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.phone}) - {self.status}"
+
+class Customer(models.Model):
+    name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=30, unique=True)
+    password_hash = models.CharField(max_length=128)
+    is_phone_verified = models.BooleanField(default=False)
+    session_token = models.CharField(max_length=64, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Customer Account'
+        verbose_name_plural = 'Customer Accounts'
+
+    def __str__(self):
+        return f"{self.name} ({self.phone})"
 
 class Vehicle(models.Model):
     CATEGORY_CHOICES = [

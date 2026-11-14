@@ -422,6 +422,209 @@ export async function fetchAdminReports() {
   }
 }
 
+// ============================================================================
+// PONDY RIDE CIRCLE - DRIVER PORTAL CLIENT (MOBILE + PASSWORD - NO EMAIL)
+// ============================================================================
+
+export function getDriverToken() {
+  return localStorage.getItem("pondy_driver_token");
+}
+
+export function setDriverSession(token, driver) {
+  localStorage.setItem("pondy_driver_token", token);
+  localStorage.setItem("pondy_driver_user", JSON.stringify(driver));
+}
+
+export function clearDriverSession() {
+  localStorage.removeItem("pondy_driver_token");
+  localStorage.removeItem("pondy_driver_user");
+}
+
+export function getDriverUser() {
+  try {
+    const raw = localStorage.getItem("pondy_driver_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isDriverLoggedIn() {
+  return !!getDriverToken();
+}
+
+function getDriverAuthHeaders() {
+  const token = getDriverToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Driver-Token": token } : {}),
+  };
+}
+
+export async function driverRegister(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/register/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function driverLogin(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/login/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function driverResetPassword(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/reset-password/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchDriverProfile() {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/profile/`, {
+      headers: getDriverAuthHeaders(),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateDriverProfile(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/profile/update/`, {
+      method: "POST",
+      headers: getDriverAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function submitDriverDocuments(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/documents/submit/`, {
+      method: "POST",
+      headers: getDriverAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchDriverDuties() {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/duties/`, {
+      headers: getDriverAuthHeaders(),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message, duties: [] };
+  }
+}
+
+export async function updateDriverDutyStatus(dutyId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/api/driver/duties/${dutyId}/status/`, {
+      method: "POST",
+      headers: getDriverAuthHeaders(),
+      body: JSON.stringify({ status: newStatus }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// CUSTOMER AUTHENTICATION (MOBILE + PASSWORD - NO EMAIL DEPENDENCY)
+// ============================================================================
+
+export function getCustomerToken() {
+  return localStorage.getItem("pondy_customer_token");
+}
+
+export function setCustomerSession(token, customer) {
+  localStorage.setItem("pondy_customer_token", token);
+  localStorage.setItem("pondy_customer_user", JSON.stringify(customer));
+}
+
+export function clearCustomerSession() {
+  localStorage.removeItem("pondy_customer_token");
+  localStorage.removeItem("pondy_customer_user");
+}
+
+export function isCustomerLoggedIn() {
+  return !!getCustomerToken();
+}
+
+export async function customerRegister(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/register/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function customerLogin(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/login/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchCustomerBookings() {
+  const token = getCustomerToken();
+  try {
+    const res = await fetch(`${API_BASE}/api/customer/bookings/`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Customer-Token": token } : {}),
+      },
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, trips: [] };
+  }
+}
+
+
 
 
 

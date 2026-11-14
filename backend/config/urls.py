@@ -19,6 +19,20 @@ from config.admin_api import (
     admin_reports_data,
 )
 
+from bookings.driver_auth_api import (
+    driver_register,
+    driver_login,
+    driver_reset_password,
+    driver_profile_get,
+    driver_profile_update,
+    driver_documents_submit,
+    driver_duties_list,
+    driver_duty_update_status,
+    customer_register,
+    customer_login,
+    customer_bookings_list,
+)
+
 admin.site.site_header = "Pondy Tours & Travels Admin"
 admin.site.site_title = "Pondy Tours Dispatch"
 admin.site.index_title = "Lead & Booking Management"
@@ -46,5 +60,20 @@ urlpatterns = [
     path('api/admin/vehicles/', admin_vehicles_manage, name='admin_vehicles_manage'),
     path('api/admin/vehicles/<int:pk>/', admin_vehicle_detail, name='admin_vehicle_detail'),
     path('api/admin/reports/', admin_reports_data, name='admin_reports_data'),
+
+    # Driver Portal Endpoints (Mobile + Password - No Email)
+    path('api/driver/register/', driver_register, name='driver_register'),
+    path('api/driver/login/', driver_login, name='driver_login'),
+    path('api/driver/reset-password/', driver_reset_password, name='driver_reset_password'),
+    path('api/driver/profile/', driver_profile_get, name='driver_profile_get'),
+    path('api/driver/profile/update/', driver_profile_update, name='driver_profile_update'),
+    path('api/driver/documents/submit/', driver_documents_submit, name='driver_documents_submit'),
+    path('api/driver/duties/', driver_duties_list, name='driver_duties_list'),
+    path('api/driver/duties/<int:pk>/status/', driver_duty_update_status, name='driver_duty_update_status'),
+
+    # Customer Authentication (Mobile + Password - No Email)
+    path('api/customer/register/', customer_register, name='customer_register'),
+    path('api/customer/login/', customer_login, name='customer_login'),
+    path('api/customer/bookings/', customer_bookings_list, name='customer_bookings_list'),
 ]
 

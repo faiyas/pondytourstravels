@@ -13,6 +13,9 @@ def create_lead(request):
     """
     data = request.data
     try:
+        est_fare = round(float(data.get('estimatedFare', 0) or 0))
+        dist_km = round(float(data.get('distance', 0) or 0), 1)
+
         lead = Lead.objects.create(
             trip_type=data.get('tripType', 'oneway'),
             pickup=data.get('pickup', '').strip(),
@@ -24,15 +27,21 @@ def create_lead(request):
             customer_phone=data.get('phone', '').strip(),
             customer_email=data.get('email', '').strip() or None,
             requirements=data.get('requirements', '').strip() or None,
-            distance_km=float(data.get('distance', 0) or 0),
-            estimated_fare=float(data.get('estimatedFare', 0) or 0),
+            distance_km=dist_km,
+            estimated_fare=est_fare,
             ip_address=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT'),
         )
         
         # Unique booking code
         booking_id = f"PTB-{lead.id + 1000}"
-        Booking.objects.create(booking_id=booking_id, lead=lead)
+        Booking.objects.create(
+            booking_id=booking_id,
+            lead=lead,
+            actual_fare=est_fare,
+            advance_paid=0,
+            balance_amount=est_fare,
+        )
 
         return Response({
             'success': True,

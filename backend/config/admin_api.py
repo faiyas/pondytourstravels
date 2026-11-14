@@ -338,13 +338,13 @@ def admin_bookings_list(request):
             'travelDate': str(b.lead.travel_date),
             'preferredTime': str(b.lead.preferred_time),
             'vehicleType': b.lead.vehicle_type,
-            'estimatedFare': round(float(b.lead.estimated_fare)),
+            'estimatedFare': int(round(float(b.lead.estimated_fare or 0))),
             'driverName': b.driver_name,
             'driverPhone': b.driver_phone,
             'vehicleNumber': b.vehicle_number,
-            'actualFare': round(float(b.actual_fare)) if b.actual_fare else round(float(b.lead.estimated_fare)),
-            'advancePaid': round(float(b.advance_paid)),
-            'balanceAmount': round(float(b.balance_amount)),
+            'actualFare': int(round(float(b.actual_fare))) if b.actual_fare is not None else int(round(float(b.lead.estimated_fare or 0))),
+            'advancePaid': int(round(float(b.advance_paid or 0))),
+            'balanceAmount': int(round(float(b.balance_amount))) if b.balance_amount is not None else max(0, (int(round(float(b.actual_fare))) if b.actual_fare is not None else int(round(float(b.lead.estimated_fare or 0)))) - int(round(float(b.advance_paid or 0)))),
             'adminNotes': b.admin_notes,
             'cancellationReason': getattr(b, 'cancellation_reason', None),
             'statusHistory': getattr(b, 'status_history', []) or [],
@@ -504,8 +504,20 @@ def admin_drivers_manage(request):
                     'name': d.name,
                     'phone': d.phone,
                     'licenseNumber': d.license_number,
+                    'licenseExpiry': str(d.license_expiry) if d.license_expiry else None,
+                    'aadhaarNumber': d.aadhaar_number,
+                    'address': d.address,
+                    'city': d.city,
+                    'emergencyContact': d.emergency_contact,
+                    'experienceYears': d.experience_years,
+                    'vehicleCategory': d.vehicle_category,
                     'vehicleModel': d.vehicle_model,
                     'vehicleNumber': d.vehicle_number,
+                    'rcNumber': d.rc_number,
+                    'insuranceExpiry': str(d.insurance_expiry) if d.insurance_expiry else None,
+                    'fitnessExpiry': str(d.fitness_expiry) if d.fitness_expiry else None,
+                    'onboardingStep': d.onboarding_step,
+                    'adminNotes': d.admin_review_notes,
                     'status': d.status,
                     'documentsApproved': d.documents_approved,
                     'rating': float(d.rating),
@@ -558,6 +570,8 @@ def admin_driver_detail(request, pk):
         driver.status = data['status']
     if 'documentsApproved' in data:
         driver.documents_approved = bool(data['documentsApproved'])
+    if 'adminReviewNotes' in data:
+        driver.admin_review_notes = data['adminReviewNotes']
     if 'name' in data:
         driver.name = data['name']
     if 'phone' in data:

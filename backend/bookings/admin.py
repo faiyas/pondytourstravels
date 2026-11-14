@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Booking, Driver, Vehicle
+from .models import Booking, Driver, Vehicle, Customer
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'is_phone_verified', 'created_at', 'last_login_at')
+    search_fields = ('name', 'phone')
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):

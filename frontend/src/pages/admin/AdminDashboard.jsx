@@ -66,12 +66,17 @@ import {
 
 // Helpers for numeric rounding & WhatsApp formatting
 const roundVal = (val) => Math.round(Number(val) || 0);
+const formatInr = (val) => `₹${roundVal(val).toLocaleString("en-IN")}`;
 
 const cleanPhoneForWhatsApp = (phone) => {
   if (!phone) return "";
   let digits = String(phone).replace(/[^0-9]/g, "");
-  if (digits.length === 10) digits = "91" + digits;
-  else if (digits.length === 11 && digits.startsWith("0")) digits = "91" + digits.slice(1);
+  if (digits.length === 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  if (digits.length === 10) {
+    digits = "91" + digits;
+  }
   return digits;
 };
 
@@ -121,6 +126,9 @@ export default function AdminDashboard() {
   const [driverStatusFilter, setDriverStatusFilter] = useState("all");
   const [driverModalOpen, setDriverModalOpen] = useState(false);
   const [savingDriver, setSavingDriver] = useState(false);
+  const [reviewingDriver, setReviewingDriver] = useState(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
   const [newDriver, setNewDriver] = useState({
     name: "",
     phone: "",
@@ -181,7 +189,19 @@ export default function AdminDashboard() {
   const loadBookings = useCallback(async () => {
     setLoadingBookings(true);
     const data = await fetchAdminBookings(bookingStatusFilter);
-    setBookings(data);
+    const sanitized = (data || []).map((b) => {
+      const fare = roundVal(b.actualFare ?? b.estimatedFare ?? 0);
+      const adv = roundVal(b.advancePaid ?? 0);
+      const bal = roundVal(b.balanceAmount ?? Math.max(0, fare - adv));
+      return {
+        ...b,
+        actualFare: fare,
+        estimatedFare: roundVal(b.estimatedFare ?? 0),
+        advancePaid: adv,
+        balanceAmount: bal,
+      };
+    });
+    setBookings(sanitized);
     setLoadingBookings(false);
   }, [bookingStatusFilter]);
 
@@ -287,7 +307,7 @@ export default function AdminDashboard() {
         driverName: drv.name,
         driverPhone: drv.phone,
         vehicleNumber: drv.vehicleNumber || prev.vehicleNumber || "",
-        status: (prev.status === "pending" || prev.status === "confirmed") ? "driver_assigned" : prev.status,
+        status: (prev.status === "pending" || prev.status === "confirmed" || prev.status === "quotation_sent") ? "driver_assigned" : prev.status,
       }));
     }
   };
@@ -311,23 +331,23 @@ export default function AdminDashboard() {
 `🚖 *PONDY TOURS & TRAVELS - DUTY ASSIGNMENT*
 ━━━━━━━━━━━━━━━━━━━━━━
 📋 *Duty / Booking ID:* #${b.bookingId}
-👤 *Customer:* ${b.customerName}
-📞 *Customer Mobile:* ${b.customerPhone}
+👤 *Passenger:* ${b.customerName}
+📞 *Passenger Contact:* ${b.customerPhone}
 
 📍 *Pickup Location:* ${b.pickup}
 🏁 *Drop Location:* ${b.drop}
-📅 *Date & Time:* ${b.travelDate} at ${b.preferredTime}
-🚗 *Vehicle Type:* ${(b.vehicleType || "CAB").toUpperCase()}
-🚘 *Vehicle Reg:* ${b.vehicleNumber || "Assigned"}
-${b.tripType === "round" ? "🔄 *Trip Mode:* ROUND TRIP\n" : "➡️ *Trip Mode:* ONE-WAY\n"}
-💰 *FARE & COLLECTION DETAILS:*
-• Total Trip Fare: ₹${fare}
-• Advance Collected: ₹${advance}
-• *Cash/UPI to Collect from Customer:* ₹${balance}
-${b.adminNotes ? `\n📝 *Special Instructions:* ${b.adminNotes}` : ""}
+📅 *Journey Date:* ${b.travelDate} at ${b.preferredTime}
+🚗 *Vehicle Category:* ${(b.vehicleType || "CAB").toUpperCase()}
+🚘 *Vehicle Reg No:* ${b.vehicleNumber || "Assigned"}
+${b.tripType === "round" ? "🔄 *Trip Mode:* ROUND TRIP\n" : "➡️ *Trip Mode:* ONE-WAY DROP\n"}
+💰 *FARE & COLLECTION SUMMARY:*
+• Total Trip Fare: ₹${fare.toLocaleString("en-IN")}
+• Advance Collected: ₹${advance.toLocaleString("en-IN")}
+• *Cash/UPI to Collect from Customer:* ₹${balance.toLocaleString("en-IN")}
+${b.adminNotes ? `\n📝 *Special Driver Instructions:* ${b.adminNotes}` : ""}
 ━━━━━━━━━━━━━━━━━━━━━━
 *Pondy Tours & Travels Dispatch Desk*
-📞 Helpline: +91 90252 32453
+📞 24/7 Helpline: +91 90252 32453
 🌐 pondytourstravels.com`;
 
     trackAnalyticsEvent("admin_driver_whatsapp_dispatch", "/admin", {
@@ -340,7 +360,7 @@ ${b.adminNotes ? `\n📝 *Special Instructions:* ${b.adminNotes}` : ""}
 
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
-    toast.success(`Opening WhatsApp for driver ${b.driverName || b.driverPhone}`);
+    toast.success(`Opening WhatsApp duty slip for driver ${b.driverName || b.driverPhone}`);
   };
 
   const handleSendCustomerWhatsApp = (b) => {
@@ -365,9 +385,9 @@ Dear *${b.customerName}*, your trip booking is confirmed!
 🚗 *Vehicle Type:* ${(b.vehicleType || "CAB").toUpperCase()}
 ${b.tripType === "round" ? "🔄 *Trip Mode:* Round Trip\n" : "➡️ *Trip Mode:* One-Way Drop\n"}${b.vehicleNumber ? `🚘 *Vehicle Reg No:* ${b.vehicleNumber}\n` : ""}${b.driverName ? `👨‍✈️ *Driver Assigned:* ${b.driverName} (${b.driverPhone || "Will call you shortly"})\n` : "👨‍✈️ *Driver Details:* Will be dispatched before departure\n"}
 💰 *FARE DETAILS:*
-• Total Fare: ₹${fare}
-• Advance Paid: ₹${advance}
-• *Balance Payable to Driver:* ₹${balance}
+• Total Fare: ₹${fare.toLocaleString("en-IN")}
+• Advance Paid: ₹${advance.toLocaleString("en-IN")}
+• *Balance Payable to Driver:* ₹${balance.toLocaleString("en-IN")}
 ━━━━━━━━━━━━━━━━━━━━━━
 Have a pleasant and safe journey with us!
 📞 24/7 Helpline: +91 90252 32453
@@ -396,7 +416,7 @@ Have a pleasant and safe journey with us!
     }
   };
 
-  const handleSaveBookingModal = async (e, force = false) => {
+  const handleSaveBookingModal = async (e, force = false, sendDriverWhatsApp = false) => {
     if (e) e.preventDefault();
     if (!editingBooking) return;
     setSavingBooking(true);
@@ -404,9 +424,17 @@ Have a pleasant and safe journey with us!
     const advancePaid = roundVal(editingBooking.advancePaid);
     const balanceAmount = roundVal(editingBooking.balanceAmount ?? Math.max(0, actualFare - advancePaid));
 
+    let finalStatus = editingBooking.status;
+    if (
+      (editingBooking.driverName || editingBooking.driverPhone) &&
+      (finalStatus === "pending" || finalStatus === "confirmed" || finalStatus === "quotation_sent")
+    ) {
+      finalStatus = "driver_assigned";
+    }
+
     try {
       const res = await updateBookingDetails(editingBooking.id, {
-        status: editingBooking.status,
+        status: finalStatus,
         driverName: editingBooking.driverName,
         driverPhone: editingBooking.driverPhone,
         vehicleNumber: editingBooking.vehicleNumber,
@@ -420,7 +448,7 @@ Have a pleasant and safe journey with us!
 
       if (res.hasConflict) {
         if (window.confirm(`${res.conflictMessage}\n\nClick OK to confirm overlapping assignment.`)) {
-          return handleSaveBookingModal(null, true);
+          return handleSaveBookingModal(null, true, sendDriverWhatsApp);
         } else {
           setSavingBooking(false);
           return;
@@ -429,6 +457,19 @@ Have a pleasant and safe journey with us!
 
       if (res.success) {
         toast.success(`Booking ${editingBooking.bookingId} updated successfully`);
+        
+        const updatedBookingObj = {
+          ...editingBooking,
+          status: finalStatus,
+          actualFare,
+          advancePaid,
+          balanceAmount,
+        };
+
+        if (sendDriverWhatsApp && editingBooking.driverPhone) {
+          handleSendDriverWhatsApp(updatedBookingObj);
+        }
+
         setEditingBooking(null);
         loadBookings();
         loadStats();
@@ -488,6 +529,24 @@ Have a pleasant and safe journey with us!
     } else {
       toast.error(res.error || "Failed to update documents approval");
     }
+  };
+
+  const handleReviewDriver = async (driverId, approved, statusVal) => {
+    setSavingReview(true);
+    const res = await updateAdminDriver(driverId, {
+      documentsApproved: approved,
+      status: statusVal,
+      adminReviewNotes: reviewNotes,
+    });
+    if (res.success) {
+      toast.success(approved ? "Driver application approved & partner activated!" : "Application rejected / resubmission requested.");
+      setReviewingDriver(null);
+      setReviewNotes("");
+      loadDrivers();
+    } else {
+      toast.error(res.error || "Failed to submit review");
+    }
+    setSavingReview(false);
   };
 
   // Vehicle Management Handlers
@@ -1092,17 +1151,17 @@ Have a pleasant and safe journey with us!
                         <div className="flex justify-between items-center pt-2 border-t border-border/60">
                           <div>
                             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Trip Fare</span>
-                            <span className="font-black text-primary text-base">₹{b.actualFare}</span>
+                            <span className="font-black text-primary text-base">{formatInr(b.actualFare)}</span>
                           </div>
-                          {b.advancePaid > 0 && (
+                          {roundVal(b.advancePaid) > 0 && (
                             <div className="text-right">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground block">Advance</span>
-                              <span className="font-bold text-green-600 text-xs">₹{b.advancePaid}</span>
+                              <span className="font-bold text-green-600 text-xs">{formatInr(b.advancePaid)}</span>
                             </div>
                           )}
                           <div className="text-right">
                             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Balance</span>
-                            <span className="font-black text-foreground text-sm">₹{b.balanceAmount}</span>
+                            <span className="font-black text-foreground text-sm">{formatInr(b.balanceAmount)}</span>
                           </div>
                         </div>
                       </div>
@@ -1255,7 +1314,18 @@ Have a pleasant and safe journey with us!
 
                         {/* Documents & Verification status */}
                         <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                          <span className="text-muted-foreground font-semibold">Documents:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReviewingDriver(d);
+                              setReviewNotes(d.adminNotes || "");
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Inspect KYC Documents</span>
+                          </button>
+
                           <button
                             onClick={() => handleToggleDriverDocApproval(d.id, d.documentsApproved)}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black transition-colors ${
@@ -1681,26 +1751,28 @@ Have a pleasant and safe journey with us!
       {/* MODAL 1: DISPATCH VOUCHER / DRIVER ASSIGNMENT MODAL            */}
       {/* ============================================================== */}
       {editingBooking && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-card border border-border rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl animate-fade-in max-h-[88vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3.5 border-b border-border mb-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl sm:rounded-3xl p-4 sm:p-6 max-w-lg w-full shadow-2xl animate-fade-in my-auto max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border mb-3.5 shrink-0">
               <div>
-                <h3 className="text-base sm:text-lg font-black text-foreground">
-                  Dispatch Voucher: {editingBooking.bookingId}
+                <h3 className="text-base sm:text-lg font-black text-foreground flex items-center gap-2">
+                  <span>Dispatch Voucher: {editingBooking.bookingId}</span>
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Customer: {editingBooking.customerName} ({editingBooking.customerPhone})
+                  Customer: <strong className="text-foreground">{editingBooking.customerName}</strong> ({editingBooking.customerPhone})
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setEditingBooking(null)}
-                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg"
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveBookingModal} className="space-y-3.5">
+            <form onSubmit={(e) => handleSaveBookingModal(e, false, false)} className="overflow-y-auto pr-1 space-y-3.5 flex-1">
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">
                   Trip Status
@@ -1756,7 +1828,7 @@ Have a pleasant and safe journey with us!
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">
                     Driver Name
@@ -1797,14 +1869,14 @@ Have a pleasant and safe journey with us!
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                 <div>
                   <label className="block text-[11px] font-black uppercase tracking-wider text-muted-foreground mb-1">
                     Total Fare (₹)
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.actualFare ?? 0}
+                    value={roundVal(editingBooking.actualFare)}
                     onChange={(e) => {
                       const fare = roundVal(e.target.value);
                       const adv = roundVal(editingBooking.advancePaid);
@@ -1814,7 +1886,7 @@ Have a pleasant and safe journey with us!
                         balanceAmount: Math.max(0, fare - adv),
                       });
                     }}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
+                    className="w-full px-2.5 sm:px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
 
@@ -1824,7 +1896,7 @@ Have a pleasant and safe journey with us!
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.advancePaid ?? 0}
+                    value={roundVal(editingBooking.advancePaid)}
                     onChange={(e) => {
                       const adv = roundVal(e.target.value);
                       const fare = roundVal(editingBooking.actualFare);
@@ -1834,7 +1906,7 @@ Have a pleasant and safe journey with us!
                         balanceAmount: Math.max(0, fare - adv),
                       });
                     }}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
+                    className="w-full px-2.5 sm:px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
 
@@ -1844,7 +1916,7 @@ Have a pleasant and safe journey with us!
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.balanceAmount ?? 0}
+                    value={roundVal(editingBooking.balanceAmount)}
                     onChange={(e) => {
                       const bal = roundVal(e.target.value);
                       setEditingBooking({
@@ -1852,7 +1924,7 @@ Have a pleasant and safe journey with us!
                         balanceAmount: bal,
                       });
                     }}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
+                    className="w-full px-2.5 sm:px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
               </div>
@@ -1896,15 +1968,36 @@ Have a pleasant and safe journey with us!
               )}
 
               {/* Instant WhatsApp Dispatch Panel */}
-              <div className="bg-muted/50 p-3.5 rounded-2xl border border-border space-y-2.5">
+              <div className="bg-muted/50 p-3 sm:p-3.5 rounded-2xl border border-border space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black uppercase text-foreground">
                     <MessageCircle className="w-4 h-4 text-green-600" />
-                    <span>WhatsApp Dispatch</span>
+                    <span>WhatsApp Dispatch Desk</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground font-semibold">
-                    Opens installed WhatsApp
+                    Direct WhatsApp
                   </span>
+                </div>
+
+                <div className="p-2.5 bg-background rounded-xl border border-border text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Assigned Driver:</span>
+                    <span className={editingBooking.driverPhone ? "font-bold text-foreground" : "text-amber-500 font-semibold italic"}>
+                      {editingBooking.driverName ? `${editingBooking.driverName} (${editingBooking.driverPhone})` : (editingBooking.driverPhone || "Not assigned")}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Route:</span>
+                    <span className="font-bold text-foreground truncate max-w-[200px]">
+                      {editingBooking.pickup} ➔ {editingBooking.drop}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Fare & Collection:</span>
+                    <span className="font-black text-primary">
+                      Total {formatInr(editingBooking.actualFare)} | Collect {formatInr(editingBooking.balanceAmount)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1912,48 +2005,60 @@ Have a pleasant and safe journey with us!
                     type="button"
                     onClick={() => handleSendDriverWhatsApp(editingBooking)}
                     disabled={!editingBooking.driverPhone}
-                    className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all min-h-[42px]"
                   >
-                    <Car className="w-4 h-4" />
+                    <Car className="w-4 h-4 shrink-0" />
                     <span>Send Duty to Driver</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleSendCustomerWhatsApp(editingBooking)}
-                    className="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all min-h-[42px]"
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-4 h-4 shrink-0" />
                     <span>Send Voucher to Customer</span>
                   </button>
                 </div>
 
                 {!editingBooking.driverPhone && (
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                    💡 Assign driver phone above to send the duty assignment slip directly to driver's WhatsApp.
+                    💡 Enter driver mobile above to send trip duty slip directly to driver WhatsApp.
                   </p>
                 )}
               </div>
 
-              <div className="pt-2 flex gap-3">
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-border flex flex-col sm:flex-row gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingBooking(null)}
-                  className="w-1/3 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-muted"
+                  className="order-3 sm:order-1 sm:w-1/4 py-2.5 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-muted min-h-[42px]"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   disabled={savingBooking}
-                  className="w-2/3 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-black text-xs flex items-center justify-center gap-2 shadow-md"
+                  onClick={(e) => handleSaveBookingModal(e, false, false)}
+                  className="order-2 sm:order-2 sm:w-3/8 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-black text-xs flex items-center justify-center gap-1.5 shadow-sm min-h-[42px]"
                 >
                   {savingBooking ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <CheckCircle2 className="w-4 h-4" />
+                    <Save className="w-4 h-4" />
                   )}
-                  <span>Save Dispatch Changes</span>
+                  <span>Save Changes</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={savingBooking || !editingBooking.driverPhone}
+                  onClick={(e) => handleSaveBookingModal(e, false, true)}
+                  className="order-1 sm:order-3 sm:flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md min-h-[42px]"
+                  title="Save dispatch updates and send duty details to driver via WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4 shrink-0" />
+                  <span>Save & WhatsApp Driver</span>
                 </button>
               </div>
             </form>
@@ -2185,6 +2290,108 @@ Have a pleasant and safe journey with us!
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 4: DRIVER KYC & DOCUMENT REVIEW MODAL                     */}
+      {/* ============================================================== */}
+      {reviewingDriver && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-card border border-border rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl animate-fade-in max-h-[88vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3.5 border-b border-border">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-foreground">
+                  Driver Document Review: {reviewingDriver.name}
+                </h3>
+                <p className="text-xs text-muted-foreground font-semibold">
+                  Mobile: {reviewingDriver.phone} • Status: {reviewingDriver.status}
+                </p>
+              </div>
+              <button
+                onClick={() => setReviewingDriver(null)}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Document Details Grid */}
+            <div className="bg-muted/50 p-4 rounded-2xl border border-border space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Driving Licence (DL):</span>
+                <span className="font-bold text-foreground font-mono">{reviewingDriver.licenseNumber || "Not submitted"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Licence Expiry:</span>
+                <span className="font-bold text-foreground">{reviewingDriver.licenseExpiry || "Not specified"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Aadhaar / ID Card:</span>
+                <span className="font-bold text-foreground font-mono">{reviewingDriver.aadhaarNumber || "Submitted"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Address / City:</span>
+                <span className="font-bold text-foreground">{reviewingDriver.address || "Pondicherry"}, {reviewingDriver.city || "Pondicherry"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Vehicle Category & Model:</span>
+                <span className="font-bold uppercase text-foreground">{reviewingDriver.vehicleCategory || "Sedan"} • {reviewingDriver.vehicleModel || "Registered Cab"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Vehicle Number Plate:</span>
+                <span className="font-black uppercase text-primary tracking-wider">{reviewingDriver.vehicleNumber || "PY-01"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">RC Book Number:</span>
+                <span className="font-bold text-foreground uppercase">{reviewingDriver.rcNumber || "Verified"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Insurance Expiry:</span>
+                <span className="font-bold text-foreground">{reviewingDriver.insuranceExpiry || "Valid"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-semibold">Fitness Certificate Expiry:</span>
+                <span className="font-bold text-foreground">{reviewingDriver.fitnessExpiry || "Valid"}</span>
+              </div>
+            </div>
+
+            {/* Admin Reviewer Notes */}
+            <div>
+              <label className="block text-xs font-black uppercase text-muted-foreground mb-1">
+                Dispatch Reviewer Notes
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Add notes for this driver (e.g. DL verified with transport department, clean record)..."
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold resize-none"
+              />
+            </div>
+
+            {/* Approval / Rejection Actions */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                disabled={savingReview}
+                onClick={() => handleReviewDriver(reviewingDriver.id, false, "rejected")}
+                className="flex-1 py-2.5 rounded-xl border border-destructive text-destructive font-black text-xs hover:bg-destructive/10 transition-colors"
+              >
+                Reject / Request Resubmission
+              </button>
+
+              <button
+                type="button"
+                disabled={savingReview}
+                onClick={() => handleReviewDriver(reviewingDriver.id, true, "active")}
+                className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-black text-xs shadow-md shadow-green-600/20 transition-all flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Approve & Activate Driver</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
