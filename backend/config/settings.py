@@ -95,6 +95,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF Trusted Origins for HTTPS Proxies & Instabox Domains
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.instabox.tech',
+    'https://*.instabox.sh',
+    'http://127.0.0.1:8001',
+    'http://localhost:8001',
+]
+
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
