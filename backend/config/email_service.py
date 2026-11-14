@@ -13,13 +13,23 @@ def get_smtp_backend(config):
     if not config.smtp_user or not config.smtp_password:
         return None
 
+    port = config.smtp_port
+    use_tls = config.use_tls
+    use_ssl = config.use_ssl
+    if port == 465 or use_ssl:
+        use_ssl = True
+        use_tls = False
+    elif port == 587 or use_tls:
+        use_tls = True
+        use_ssl = False
+
     return EmailBackend(
         host=config.smtp_host,
-        port=config.smtp_port,
+        port=port,
         username=config.smtp_user,
         password=config.smtp_password,
-        use_tls=config.use_tls,
-        use_ssl=config.use_ssl,
+        use_tls=use_tls,
+        use_ssl=use_ssl,
         timeout=12,
         fail_silently=False,
     )
@@ -471,6 +481,13 @@ def send_smtp_test_email(test_to_email=None, override_config=None):
         if 'useSsl' in override_config: use_ssl = bool(override_config['useSsl'])
         if override_config.get('fromName'): from_name = override_config['fromName'].strip()
         if override_config.get('fromEmail'): from_email = override_config['fromEmail'].strip()
+
+    if port == 465 or use_ssl:
+        use_ssl = True
+        use_tls = False
+    elif port == 587 or use_tls:
+        use_tls = True
+        use_ssl = False
 
     if not user or not password:
         return False, "SMTP Username or App Password is missing. Please enter your email and App Password."

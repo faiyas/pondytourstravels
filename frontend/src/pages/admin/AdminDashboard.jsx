@@ -959,7 +959,15 @@ export default function AdminDashboard() {
                         type="number"
                         placeholder="587"
                         value={smtpSettings.smtpPort}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpPort: parseInt(e.target.value) || 587 })}
+                        onChange={(e) => {
+                          const p = parseInt(e.target.value) || 587;
+                          setSmtpSettings({
+                            ...smtpSettings,
+                            smtpPort: p,
+                            useSsl: p === 465,
+                            useTls: p === 587,
+                          });
+                        }}
                         className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                       />
                     </div>
@@ -1038,17 +1046,27 @@ export default function AdminDashboard() {
                       <input
                         type="checkbox"
                         checked={smtpSettings.useTls}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, useTls: e.target.checked, useSsl: !e.target.checked ? smtpSettings.useSsl : false })}
+                        onChange={(e) => setSmtpSettings({ 
+                          ...smtpSettings, 
+                          useTls: e.target.checked, 
+                          useSsl: !e.target.checked,
+                          smtpPort: e.target.checked ? 587 : 465,
+                        })}
                         className="rounded text-primary focus:ring-primary w-4 h-4"
                       />
-                      <span>Use TLS (Recommended for port 587)</span>
+                      <span>Use TLS (Port 587)</span>
                     </label>
 
                     <label className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer">
                       <input
                         type="checkbox"
                         checked={smtpSettings.useSsl}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, useSsl: e.target.checked, useTls: !e.target.checked ? smtpSettings.useTls : false })}
+                        onChange={(e) => setSmtpSettings({ 
+                          ...smtpSettings, 
+                          useSsl: e.target.checked, 
+                          useTls: !e.target.checked,
+                          smtpPort: e.target.checked ? 465 : 587,
+                        })}
                         className="rounded text-primary focus:ring-primary w-4 h-4"
                       />
                       <span>Use SSL (Port 465)</span>
