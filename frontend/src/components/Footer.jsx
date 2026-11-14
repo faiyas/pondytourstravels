@@ -1,8 +1,30 @@
-﻿import React from "react";
-import { Link } from "react-router-dom";
+﻿import React, { useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, Mail, MapPin, Phone } from "lucide-react";
 
 export default function Footer() {
+  const navigate = useNavigate();
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef(null);
+
+  // Secret Admin Trigger: Clicking 5 times within 2.5 seconds redirects to /admin/login
+  const handleSecretAdminTrigger = () => {
+    clickCountRef.current += 1;
+
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+    }
+
+    clickTimerRef.current = setTimeout(() => {
+      clickCountRef.current = 0;
+    }, 2500);
+
+    if (clickCountRef.current >= 5) {
+      clickCountRef.current = 0;
+      navigate("/admin/login");
+    }
+  };
+
   const quickLinks = [
     { label: "Booking Center", path: "/" },
     { label: "About Pondy Tours", path: "/about" },
@@ -25,11 +47,15 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div
+              onClick={handleSecretAdminTrigger}
+              className="flex items-center space-x-2 select-none cursor-pointer"
+              title="Pondy Tours & Travels"
+            >
               <img
                 src="/images/logo/light.png"
                 alt="Pondy Tours Logo"
-                className="w-10 h-10 object-contain"
+                className="w-10 h-10 object-contain active:scale-95 transition-transform"
                 onError={(e) => {
                   e.target.src = "/placeholder.svg";
                 }}
