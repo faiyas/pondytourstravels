@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import VehiclePricing
 
-@api_view(['GET'])
+@api_view(['GET', 'HEAD'])
 def get_pricing_matrix(request):
     """
     Returns the live active pricing matrix to the frontend booking calculator.
