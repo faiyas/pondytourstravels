@@ -288,7 +288,14 @@ export async function fetchAdminSmtpSettings() {
     const res = await fetch(`${API_BASE}/api/admin/smtp/`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to load SMTP settings");
+    if (!res.ok) {
+      console.warn(`fetchAdminSmtpSettings: Backend returned ${res.status}`);
+      return null;
+    }
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return null;
+    }
     return await res.json();
   } catch (err) {
     console.error("fetchAdminSmtpSettings error:", err);
@@ -306,6 +313,13 @@ export async function saveAdminSmtpSettings(payload) {
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return { 
+        success: false, 
+        error: `Backend returned ${res.status} (Endpoint not active yet). Please run "git pull" and restart "pondy_backend" on the server.` 
+      };
+    }
     return await res.json();
   } catch (err) {
     return { success: false, error: err.message };
@@ -322,6 +336,13 @@ export async function testAdminSmtpSettings(testEmail) {
       headers: getAuthHeaders(),
       body: JSON.stringify({ testEmail }),
     });
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return { 
+        success: false, 
+        error: `Backend returned ${res.status} (Endpoint not active yet). Please run "git pull" and restart "pondy_backend" on the server.` 
+      };
+    }
     return await res.json();
   } catch (err) {
     return { success: false, error: err.message };
