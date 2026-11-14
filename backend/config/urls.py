@@ -11,6 +11,11 @@ from config.admin_api import (
     admin_bookings_list,
     admin_booking_update,
     admin_pricing_manage,
+    admin_drivers_manage,
+    admin_driver_detail,
+    admin_vehicles_manage,
+    admin_vehicle_detail,
+    admin_reports_data,
 )
 
 admin.site.site_header = "Pondy Tours & Travels Admin"
@@ -34,5 +39,10 @@ urlpatterns = [
     path('api/admin/bookings/', admin_bookings_list, name='admin_bookings_list'),
     path('api/admin/bookings/<int:pk>/', admin_booking_update, name='admin_booking_update'),
     path('api/admin/pricing/', admin_pricing_manage, name='admin_pricing_manage'),
+    path('api/admin/drivers/', admin_drivers_manage, name='admin_drivers_manage'),
+    path('api/admin/drivers/<int:pk>/', admin_driver_detail, name='admin_driver_detail'),
+    path('api/admin/vehicles/', admin_vehicles_manage, name='admin_vehicles_manage'),
+    path('api/admin/vehicles/<int:pk>/', admin_vehicle_detail, name='admin_vehicle_detail'),
+    path('api/admin/reports/', admin_reports_data, name='admin_reports_data'),
 ]
 

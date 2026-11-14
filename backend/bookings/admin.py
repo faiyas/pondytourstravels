@@ -1,5 +1,17 @@
 from django.contrib import admin
-from .models import Booking
+from .models import Booking, Driver, Vehicle
+
+@admin.register(Driver)
+class DriverAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'license_number', 'vehicle_model', 'vehicle_number', 'status', 'documents_approved', 'rating', 'total_trips')
+    list_filter = ('status', 'documents_approved')
+    search_fields = ('name', 'phone', 'license_number', 'vehicle_number')
+
+@admin.register(Vehicle)
+class VehicleAdmin(admin.ModelAdmin):
+    list_display = ('registration_number', 'category', 'model_name', 'assigned_driver', 'insurance_expiry', 'fitness_expiry', 'status')
+    list_filter = ('category', 'status')
+    search_fields = ('registration_number', 'model_name')
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
@@ -21,4 +33,5 @@ class BookingAdmin(admin.ModelAdmin):
     def get_route(self, obj):
         return f"{obj.lead.pickup} -> {obj.lead.drop}"
     get_route.short_description = 'Route'
+
 

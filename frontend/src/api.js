@@ -280,6 +280,137 @@ export async function saveAdminPricing(pricingList) {
   }
 }
 
+// ============================================================================
+// DRIVERS API
+// ============================================================================
+
+export async function fetchAdminDrivers() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/drivers/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch drivers");
+    const data = await res.json();
+    return data.drivers || [];
+  } catch (err) {
+    console.error("fetchAdminDrivers error:", err);
+    return [];
+  }
+}
+
+export async function createAdminDriver(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/drivers/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateAdminDriver(driverId, payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/drivers/${driverId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteAdminDriver(driverId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/drivers/${driverId}/`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// VEHICLES API
+// ============================================================================
+
+export async function fetchAdminVehicles() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/vehicles/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch vehicles");
+    const data = await res.json();
+    return data.vehicles || [];
+  } catch (err) {
+    console.error("fetchAdminVehicles error:", err);
+    return [];
+  }
+}
+
+export async function createAdminVehicle(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/vehicles/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateAdminVehicle(vehicleId, payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/vehicles/${vehicleId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteAdminVehicle(vehicleId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/vehicles/${vehicleId}/`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// REPORTS & ANALYTICS API
+// ============================================================================
+
+export async function fetchAdminReports() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/reports/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch reports");
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error("fetchAdminReports error:", err);
+    return null;
+  }
+}
+
+
 
 
 
