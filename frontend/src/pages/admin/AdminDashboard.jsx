@@ -11,9 +11,6 @@ import {
   updateBookingDetails,
   fetchAdminPricing,
   saveAdminPricing,
-  fetchAdminSmtpSettings,
-  saveAdminSmtpSettings,
-  testAdminSmtpSettings,
 } from "../../api";
 import { toast } from "sonner";
 import {
@@ -38,18 +35,12 @@ import {
   Save,
   DollarSign,
   UserCheck,
-  Mail,
-  Send,
-  Key,
-  Lock,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("leads"); // 'leads' | 'bookings' | 'pricing' | 'smtp'
+  const [activeTab, setActiveTab] = useState("leads"); // 'leads' | 'bookings' | 'pricing'
 
   // Metric Stats
   const [stats, setStats] = useState({
@@ -81,28 +72,6 @@ export default function AdminDashboard() {
   const [pricingList, setPricingList] = useState([]);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [savingPricing, setSavingPricing] = useState(false);
-
-  // SMTP Settings State
-  const [smtpSettings, setSmtpSettings] = useState({
-    isActive: true,
-    smtpHost: "smtp.gmail.com",
-    smtpPort: 587,
-    smtpUser: "",
-    smtpPassword: "",
-    hasPassword: false,
-    useTls: true,
-    useSsl: false,
-    fromName: "Pondy Tours & Travels",
-    fromEmail: "pondytourstravels@gmail.com",
-    adminNotificationEmail: "pondytourstravels@gmail.com",
-    notifyAdminOnNewEnquiry: true,
-    notifyCustomerOnConfirmed: true,
-  });
-  const [loadingSmtp, setLoadingSmtp] = useState(false);
-  const [savingSmtp, setSavingSmtp] = useState(false);
-  const [testingSmtp, setTestingSmtp] = useState(false);
-  const [testEmailAddress, setTestEmailAddress] = useState("");
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
   // Auth Guard
   useEffect(() => {
@@ -140,30 +109,14 @@ export default function AdminDashboard() {
     setLoadingPricing(false);
   }, []);
 
-  const loadSmtp = useCallback(async () => {
-    setLoadingSmtp(true);
-    const data = await fetchAdminSmtpSettings();
-    if (data) {
-      setSmtpSettings((prev) => ({
-        ...prev,
-        ...data,
-      }));
-      if (data.adminNotificationEmail) {
-        setTestEmailAddress(data.adminNotificationEmail);
-      }
-    }
-    setLoadingSmtp(false);
-  }, []);
-
   useEffect(() => {
     if (isAdminLoggedIn()) {
       loadStats();
       if (activeTab === "leads") loadLeads();
       if (activeTab === "bookings") loadBookings();
       if (activeTab === "pricing") loadPricing();
-      if (activeTab === "smtp") loadSmtp();
     }
-  }, [activeTab, loadStats, loadLeads, loadBookings, loadPricing, loadSmtp]);
+  }, [activeTab, loadStats, loadLeads, loadBookings, loadPricing]);
 
   // Handlers
   const handleLogout = () => {
@@ -199,7 +152,6 @@ export default function AdminDashboard() {
         advancePaid: editingBooking.advancePaid,
         balanceAmount: editingBooking.balanceAmount,
         adminNotes: editingBooking.adminNotes,
-        sendCustomerEmail: editingBooking.sendCustomerEmail,
       });
       if (res.success) {
         toast.success(`Booking ${editingBooking.bookingId} updated successfully`);
@@ -225,40 +177,6 @@ export default function AdminDashboard() {
       toast.error(res.error || "Failed to save pricing");
     }
     setSavingPricing(false);
-  };
-
-  const handleSaveSmtp = async (e) => {
-    e?.preventDefault();
-    setSavingSmtp(true);
-    const res = await saveAdminSmtpSettings(smtpSettings);
-    setSavingSmtp(false);
-    if (res.success) {
-      toast.success("SMTP & Email settings saved successfully in PostgreSQL!");
-      loadSmtp();
-    } else {
-      toast.error(res.error || "Failed to save SMTP settings");
-    }
-  };
-
-  const handleTestSmtp = async () => {
-    const target = (testEmailAddress || smtpSettings.adminNotificationEmail || "").trim();
-    if (!target) {
-      toast.error("Please provide a recipient email address to receive the test.");
-      return;
-    }
-    if (!smtpSettings.smtpUser || !smtpSettings.smtpPassword) {
-      toast.error("Please enter both SMTP Username and App Password first.");
-      return;
-    }
-    setTestingSmtp(true);
-    toast.info(`Sending test verification email to ${target}...`);
-    const res = await testAdminSmtpSettings(target, smtpSettings);
-    setTestingSmtp(false);
-    if (res.success) {
-      toast.success(res.message || "Test email delivered successfully!");
-    } else {
-      toast.error(res.error || "Failed to send test email. Check your SMTP credentials.");
-    }
   };
 
   const handlePricingFieldChange = (index, field, value) => {
@@ -404,18 +322,6 @@ export default function AdminDashboard() {
           >
             <DollarSign className="w-4 h-4" />
             <span>Live Vehicle Pricing</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("smtp")}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
-              activeTab === "smtp"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            <Mail className="w-4 h-4" />
-            <span>Email &amp; SMTP Settings</span>
           </button>
         </div>
 
@@ -823,292 +729,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
-        {/* TAB 4: EMAIL & SMTP SETTINGS */}
-        {activeTab === "smtp" && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-                <div>
-                  <h2 className="text-lg font-black text-foreground uppercase tracking-tight flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-primary" />
-                    <span>Automated Email &amp; SMTP Configuration</span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Configure automated notifications sent to admin for new bookings and confirmation vouchers sent to customers.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer bg-muted/50 px-3 py-1.5 rounded-xl border border-border">
-                    <input
-                      type="checkbox"
-                      checked={smtpSettings.isActive}
-                      onChange={(e) => setSmtpSettings({ ...smtpSettings, isActive: e.target.checked })}
-                      className="rounded text-primary focus:ring-primary w-4 h-4"
-                    />
-                    <span>Email Automation Enabled</span>
-                  </label>
-                  <button
-                    onClick={handleSaveSmtp}
-                    disabled={savingSmtp}
-                    className="bg-primary hover:bg-primary/95 text-primary-foreground font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all shrink-0"
-                  >
-                    {savingSmtp ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    <span>Save Email Settings</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Content */}
-              <form onSubmit={handleSaveSmtp} className="mt-6 space-y-6">
-                {/* Section 1: Receiver Email */}
-                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
-                  <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    <span>Admin Receiver Notification Email</span>
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    The email address where Pondy Tours &amp; Travels admin receives instantaneous alerts when any customer submits a new booking enquiry.
-                  </p>
-                  <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">
-                      Admin Alert Receiver Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="pondytourstravels@gmail.com"
-                      value={smtpSettings.adminNotificationEmail || ""}
-                      onChange={(e) => setSmtpSettings({ ...smtpSettings, adminNotificationEmail: e.target.value })}
-                      className="w-full sm:w-96 px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Section 2: Automation Rules */}
-                <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                  <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-2">
-                    Email Dispatch Triggers
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-muted/20 cursor-pointer hover:border-primary/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={smtpSettings.notifyAdminOnNewEnquiry}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, notifyAdminOnNewEnquiry: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary w-4 h-4 mt-0.5"
-                      />
-                      <div>
-                        <p className="text-xs font-bold text-foreground">Alert Admin on New Enquiry</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Sends full trip details to the admin receiver email whenever a customer books on the website.
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-muted/20 cursor-pointer hover:border-primary/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={smtpSettings.notifyCustomerOnConfirmed}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, notifyCustomerOnConfirmed: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary w-4 h-4 mt-0.5"
-                      />
-                      <div>
-                        <p className="text-xs font-bold text-foreground">Send Voucher to Customer on Confirmation</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Automatically emails the customer their official booking voucher with driver &amp; fare details when status becomes "Confirmed".
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Section 3: SMTP Outgoing Server Details */}
-                <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-                  <h3 className="text-sm font-black text-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-primary" />
-                    <span>SMTP Outgoing Server Credentials</span>
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Connect your Gmail, Google Workspace, or custom SMTP mail server. For Gmail, use an <strong>App Password</strong> generated under Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords.
-                  </p>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        SMTP Host Server
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="smtp.gmail.com"
-                        value={smtpSettings.smtpHost}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpHost: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        SMTP Port
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="587"
-                        value={smtpSettings.smtpPort}
-                        onChange={(e) => {
-                          const p = parseInt(e.target.value) || 587;
-                          setSmtpSettings({
-                            ...smtpSettings,
-                            smtpPort: p,
-                            useSsl: p === 465,
-                            useTls: p === 587,
-                          });
-                        }}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        Sender From Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Pondy Tours & Travels"
-                        value={smtpSettings.fromName}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, fromName: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        SMTP Username / Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="pondytourstravels@gmail.com"
-                        value={smtpSettings.smtpUser}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpUser: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        SMTP Password / App Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showSmtpPassword ? "text" : "password"}
-                          placeholder={smtpSettings.hasPassword ? "•••••••••••••••• (Configured)" : "Enter 16-character App Password"}
-                          value={smtpSettings.smtpPassword || ""}
-                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtpPassword: e.target.value })}
-                          className="w-full pl-3 pr-10 py-2 bg-background border border-border rounded-xl text-sm font-bold tracking-wide"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSmtpPassword(!showSmtpPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors"
-                          title={showSmtpPassword ? "Hide Password" : "Show Password"}
-                        >
-                          {showSmtpPassword ? (
-                            <EyeOff className="w-4 h-4 text-primary" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                        From Email Header
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="pondytourstravels@gmail.com"
-                        value={smtpSettings.fromEmail}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, fromEmail: e.target.value })}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-6 pt-2">
-                    <label className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={smtpSettings.useTls}
-                        onChange={(e) => setSmtpSettings({ 
-                          ...smtpSettings, 
-                          useTls: e.target.checked, 
-                          useSsl: !e.target.checked,
-                          smtpPort: e.target.checked ? 587 : 465,
-                        })}
-                        className="rounded text-primary focus:ring-primary w-4 h-4"
-                      />
-                      <span>Use TLS (Port 587)</span>
-                    </label>
-
-                    <label className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={smtpSettings.useSsl}
-                        onChange={(e) => setSmtpSettings({ 
-                          ...smtpSettings, 
-                          useSsl: e.target.checked, 
-                          useTls: !e.target.checked,
-                          smtpPort: e.target.checked ? 465 : 587,
-                        })}
-                        className="rounded text-primary focus:ring-primary w-4 h-4"
-                      />
-                      <span>Use SSL (Port 465)</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Section 4: Live Test Verification */}
-                <div className="bg-card border border-border rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="w-full sm:w-auto">
-                    <h4 className="text-xs font-black uppercase text-foreground">Verify SMTP Connection</h4>
-                    <p className="text-[11px] text-muted-foreground">
-                      Send a test email to verify your outgoing SMTP credentials right away.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <input
-                      type="email"
-                      placeholder="Receiver test email..."
-                      value={testEmailAddress}
-                      onChange={(e) => setTestEmailAddress(e.target.value)}
-                      className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-bold w-full sm:w-64"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleTestSmtp}
-                      disabled={testingSmtp}
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground font-black text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm shrink-0"
-                    >
-                      {testingSmtp ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                      <span>Send Test</span>
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* DRIVER ASSIGNMENT / EDIT MODAL */}
@@ -1246,26 +866,6 @@ export default function AdminDashboard() {
                   className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-medium resize-none"
                 />
               </div>
-
-              {editingBooking.customerEmail && (
-                <div className="p-3.5 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Mail className="w-4 h-4 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Send Voucher Email to Customer</p>
-                      <p className="text-[10px] text-muted-foreground">{editingBooking.customerEmail}</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editingBooking.sendCustomerEmail ?? (editingBooking.status === "confirmed" || editingBooking.status === "driver_assigned")}
-                      onChange={(e) => setEditingBooking({ ...editingBooking, sendCustomerEmail: e.target.checked })}
-                      className="rounded text-primary focus:ring-primary w-4 h-4"
-                    />
-                  </label>
-                </div>
-              )}
 
               <div className="pt-3 flex gap-3">
                 <button

@@ -13,11 +13,6 @@ from leads.models import Lead
 from bookings.models import Booking
 from pricing.models import VehiclePricing
 from analytics.models import AnalyticsEvent
-from website_cms.models import SMTPSettings
-from config.email_service import (
-    send_booking_confirmation_customer_email,
-    send_smtp_test_email,
-)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -148,13 +143,6 @@ def admin_lead_update(request, pk):
     if new_status:
         lead.status = new_status
         lead.save()
-        if new_status == 'converted' and hasattr(lead, 'booking'):
-            lead.booking.status = 'confirmed'
-            lead.booking.save()
-            try:
-                send_booking_confirmation_customer_email(lead.booking)
-            except Exception:
-                pass
 
     return Response({'success': True, 'leadId': lead.id, 'status': lead.status})
 
@@ -212,14 +200,8 @@ def admin_booking_update(request, pk):
         return Response({'success': False, 'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
 
     data = request.data
-    old_status = booking.status
-    status_changed_to_confirmed = False
-
     if 'status' in data:
-        new_status = data['status']
-        if new_status in ['confirmed', 'driver_assigned'] and old_status != new_status:
-            status_changed_to_confirmed = True
-        booking.status = new_status
+        booking.status = data['status']
     if 'driverName' in data:
         booking.driver_name = data['driverName']
     if 'driverPhone' in data:
@@ -236,14 +218,6 @@ def admin_booking_update(request, pk):
         booking.admin_notes = data['adminNotes']
 
     booking.save()
-
-    # Automatically dispatch confirmation email to customer if confirmed or requested
-    if status_changed_to_confirmed or data.get('sendCustomerEmail'):
-        try:
-            send_booking_confirmation_customer_email(booking)
-        except Exception:
-            pass
-
     return Response({'success': True, 'bookingId': booking.booking_id})
 
 @api_view(['GET', 'PUT'])
@@ -286,80 +260,5 @@ def admin_pricing_manage(request):
                 is_active=item.get('isActive', True),
             )
         return Response({'success': True, 'message': 'Vehicle pricing matrix updated successfully.'})
-
-
-@api_view(['GET', 'PUT'])
-@authentication_classes([TokenAuthentication, SessionAuthentication])
-@permission_classes([IsAuthenticated])
-def admin_smtp_manage(request):
-    """
-    Get or update SMTP configuration live from the React Admin Dashboard.
-    """
-    config = SMTPSettings.get_settings()
-    if request.method == 'GET':
-        return Response({
-            'isActive': config.is_active,
-            'smtpHost': config.smtp_host,
-            'smtpPort': config.smtp_port,
-            'smtpUser': config.smtp_user or '',
-            'smtpPassword': config.smtp_password or '',
-            'hasPassword': bool(config.smtp_password),
-            'useTls': config.use_tls,
-            'useSsl': config.use_ssl,
-            'fromName': config.from_name,
-            'fromEmail': config.from_email,
-            'adminNotificationEmail': config.admin_notification_email,
-            'notifyAdminOnNewEnquiry': config.notify_admin_on_new_enquiry,
-            'notifyCustomerOnConfirmed': config.notify_customer_on_confirmed,
-            'updatedAt': config.updated_at.isoformat() if config.updated_at else None,
-        })
-
-    if request.method == 'PUT':
-        data = request.data
-        if 'isActive' in data:
-            config.is_active = bool(data['isActive'])
-        if 'smtpHost' in data and data['smtpHost']:
-            config.smtp_host = str(data['smtpHost']).strip()
-        if 'smtpPort' in data and data['smtpPort']:
-            config.smtp_port = int(data['smtpPort'])
-        if 'smtpUser' in data:
-            config.smtp_user = str(data['smtpUser']).strip()
-        if 'smtpPassword' in data and data['smtpPassword']:
-            config.smtp_password = str(data['smtpPassword']).strip()
-        if 'useTls' in data:
-            config.use_tls = bool(data['useTls'])
-        if 'useSsl' in data:
-            config.use_ssl = bool(data['useSsl'])
-        if 'fromName' in data:
-            config.from_name = str(data['fromName']).strip()
-        if 'fromEmail' in data and data['fromEmail']:
-            config.from_email = str(data['fromEmail']).strip()
-        if 'adminNotificationEmail' in data and data['adminNotificationEmail']:
-            config.admin_notification_email = str(data['adminNotificationEmail']).strip()
-        if 'notifyAdminOnNewEnquiry' in data:
-            config.notify_admin_on_new_enquiry = bool(data['notifyAdminOnNewEnquiry'])
-        if 'notifyCustomerOnConfirmed' in data:
-            config.notify_customer_on_confirmed = bool(data['notifyCustomerOnConfirmed'])
-
-        config.save()
-        return Response({
-            'success': True,
-            'message': 'SMTP & Email configuration updated successfully.',
-            'adminNotificationEmail': config.admin_notification_email,
-        })
-
-
-@api_view(['POST'])
-@authentication_classes([TokenAuthentication, SessionAuthentication])
-@permission_classes([IsAuthenticated])
-def admin_smtp_test(request):
-    """
-    Dispatches a test verification email using configured or submitted SMTP settings.
-    """
-    test_email = request.data.get('testEmail')
-    success, message = send_smtp_test_email(test_email, override_config=request.data)
-    if success:
-        return Response({'success': True, 'message': message})
-    return Response({'success': False, 'error': message}, status=status.HTTP_400_BAD_REQUEST)
 
 

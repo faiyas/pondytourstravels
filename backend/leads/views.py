@@ -4,14 +4,12 @@ from rest_framework.response import Response
 from django.utils import timezone
 from .models import Lead
 from bookings.models import Booking
-from config.email_service import send_new_enquiry_admin_notification
 
 @api_view(['POST'])
 def create_lead(request):
     """
     Saves a new booking form enquiry from the website into PostgreSQL.
-    Automatically generates a Booking voucher, sends admin email notification,
-    and returns IDs for WhatsApp dispatch.
+    Automatically generates a Booking voucher and returns IDs for WhatsApp dispatch.
     """
     data = request.data
     try:
@@ -34,13 +32,7 @@ def create_lead(request):
         
         # Unique booking code
         booking_id = f"PTB-{lead.id + 1000}"
-        booking = Booking.objects.create(booking_id=booking_id, lead=lead)
-
-        # Dispatch automated notification email to admin
-        try:
-            send_new_enquiry_admin_notification(lead, booking)
-        except Exception:
-            pass
+        Booking.objects.create(booking_id=booking_id, lead=lead)
 
         return Response({
             'success': True,
