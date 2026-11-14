@@ -457,7 +457,7 @@ function getDriverAuthHeaders() {
   const token = getDriverToken();
   return {
     "Content-Type": "application/json",
-    ...(token ? { "Driver-Token": token } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}`, "Driver-Token": token } : {}),
   };
 }
 
@@ -630,14 +630,18 @@ export async function customerResetPassword(payload) {
   }
 }
 
-export async function fetchCustomerBookings() {
+function getCustomerAuthHeaders() {
   const token = getCustomerToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}`, "Customer-Token": token } : {}),
+  };
+}
+
+export async function fetchCustomerBookings() {
   try {
     const res = await fetch(`${API_BASE}/api/customer/bookings/`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { "Customer-Token": token } : {}),
-      },
+      headers: getCustomerAuthHeaders(),
     });
     return await res.json();
   } catch (err) {
@@ -646,14 +650,10 @@ export async function fetchCustomerBookings() {
 }
 
 export async function customerCancelBooking(bookingId, reason) {
-  const token = getCustomerToken();
   try {
     const res = await fetch(`${API_BASE}/api/customer/bookings/${bookingId}/cancel/`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { "Customer-Token": token } : {}),
-      },
+      headers: getCustomerAuthHeaders(),
       body: JSON.stringify({ reason }),
     });
     return await res.json();
@@ -663,14 +663,10 @@ export async function customerCancelBooking(bookingId, reason) {
 }
 
 export async function customerSubmitFeedback(bookingId, rating, feedback) {
-  const token = getCustomerToken();
   try {
     const res = await fetch(`${API_BASE}/api/customer/bookings/${bookingId}/feedback/`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { "Customer-Token": token } : {}),
-      },
+      headers: getCustomerAuthHeaders(),
       body: JSON.stringify({ rating, feedback }),
     });
     return await res.json();

@@ -18,7 +18,13 @@ def clean_phone(phone_str):
     return digits[-10:] if len(digits) >= 10 else digits
 
 def get_authenticated_driver(request):
-    token = request.headers.get('Driver-Token') or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    auth_header = request.headers.get('Authorization') or request.META.get('HTTP_AUTHORIZATION', '')
+    bearer_token = auth_header.replace('Bearer ', '').strip() if auth_header.startswith('Bearer ') else auth_header.strip()
+    token = (
+        request.headers.get('Driver-Token')
+        or bearer_token
+        or request.GET.get('token')
+    )
     if not token:
         return None
     try:
@@ -27,7 +33,13 @@ def get_authenticated_driver(request):
         return None
 
 def get_authenticated_customer(request):
-    token = request.headers.get('Customer-Token') or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    auth_header = request.headers.get('Authorization') or request.META.get('HTTP_AUTHORIZATION', '')
+    bearer_token = auth_header.replace('Bearer ', '').strip() if auth_header.startswith('Bearer ') else auth_header.strip()
+    token = (
+        request.headers.get('Customer-Token')
+        or bearer_token
+        or request.GET.get('token')
+    )
     if not token:
         return None
     try:

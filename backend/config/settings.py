@@ -96,6 +96,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'driver-token',
+    'customer-token',
+    'x-driver-token',
+    'x-customer-token',
+]
+
 # CSRF Trusted Origins for HTTPS Proxies & Instabox Domains
 CSRF_TRUSTED_ORIGINS = [
     'https://*.instabox.tech',
