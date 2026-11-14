@@ -3,6 +3,15 @@ from django.urls import path
 from leads.views import create_lead, track_whatsapp_click
 from pricing.views import get_pricing_matrix
 from analytics.views import track_event
+from config.admin_api import (
+    admin_login,
+    admin_stats,
+    admin_leads_list,
+    admin_lead_update,
+    admin_bookings_list,
+    admin_booking_update,
+    admin_pricing_manage,
+)
 
 admin.site.site_header = "Pondy Tours & Travels Admin"
 admin.site.site_title = "Pondy Tours Dispatch"
@@ -11,10 +20,19 @@ admin.site.index_title = "Lead & Booking Management"
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # Core API Endpoints
+    # Public Client API Endpoints
     path('api/leads/enquiry/', create_lead, name='create_lead'),
     path('api/leads/<int:lead_id>/whatsapp-click/', track_whatsapp_click, name='track_whatsapp_click'),
     path('api/pricing/', get_pricing_matrix, name='pricing_matrix'),
     path('api/analytics/track/', track_event, name='track_event'),
+
+    # React Admin Dashboard Endpoints
+    path('api/auth/login/', admin_login, name='admin_login'),
+    path('api/admin/stats/', admin_stats, name='admin_stats'),
+    path('api/admin/leads/', admin_leads_list, name='admin_leads_list'),
+    path('api/admin/leads/<int:pk>/', admin_lead_update, name='admin_lead_update'),
+    path('api/admin/bookings/', admin_bookings_list, name='admin_bookings_list'),
+    path('api/admin/bookings/<int:pk>/', admin_booking_update, name='admin_booking_update'),
+    path('api/admin/pricing/', admin_pricing_manage, name='admin_pricing_manage'),
 ]
 

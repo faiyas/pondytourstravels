@@ -14,6 +14,8 @@ import RouteLandingPage from "./pages/RouteLandingPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 export default function App() {
   return (
@@ -29,6 +31,12 @@ export default function App() {
           <Route path="/routes/:slug" element={<RouteLandingPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
+          
+          {/* Custom In-App React Admin Portal */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

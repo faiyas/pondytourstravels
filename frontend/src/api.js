@@ -119,3 +119,162 @@ export async function trackAnalyticsEvent(eventType, pagePath = window.location.
   }
 }
 
+// ============================================================================
+// ADMIN DASHBOARD & AUTHENTICATION API
+// ============================================================================
+
+export function getAdminToken() {
+  return localStorage.getItem("pondy_admin_token");
+}
+
+export function setAdminSession(token, user) {
+  localStorage.setItem("pondy_admin_token", token);
+  localStorage.setItem("pondy_admin_user", JSON.stringify(user));
+}
+
+export function clearAdminSession() {
+  localStorage.removeItem("pondy_admin_token");
+  localStorage.removeItem("pondy_admin_user");
+}
+
+export function getAdminUser() {
+  try {
+    const raw = localStorage.getItem("pondy_admin_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isAdminLoggedIn() {
+  return !!getAdminToken();
+}
+
+function getAuthHeaders() {
+  const token = getAdminToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Token ${token}` } : {}),
+  };
+}
+
+export async function adminLogin(username, password) {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Login failed");
+    }
+    setAdminSession(data.token, data.user);
+    return data;
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchAdminStats() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/stats/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load dashboard metrics");
+    return await res.json();
+  } catch (err) {
+    console.error("fetchAdminStats error:", err);
+    return null;
+  }
+}
+
+export async function fetchAdminLeads(status = "all", search = "") {
+  try {
+    const url = new URL(`${API_BASE}/api/admin/leads/`, window.location.origin);
+    if (status) url.searchParams.set("status", status);
+    if (search) url.searchParams.set("search", search);
+
+    const res = await fetch(url.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load customer enquiries");
+    const data = await res.json();
+    return data.leads || [];
+  } catch (err) {
+    console.error("fetchAdminLeads error:", err);
+    return [];
+  }
+}
+
+export async function updateLeadStatus(leadId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/leads/${leadId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: newStatus }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchAdminBookings(status = "all") {
+  try {
+    const url = new URL(`${API_BASE}/api/admin/bookings/`, window.location.origin);
+    if (status) url.searchParams.set("status", status);
+
+    const res = await fetch(url.toString(), {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load booking vouchers");
+    const data = await res.json();
+    return data.bookings || [];
+  } catch (err) {
+    console.error("fetchAdminBookings error:", err);
+    return [];
+  }
+}
+
+export async function updateBookingDetails(bookingDbId, payload) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/bookings/${bookingDbId}/`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchAdminPricing() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/pricing/`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch vehicle pricing");
+    const data = await res.json();
+    return data.pricing || [];
+  } catch (err) {
+    console.error("fetchAdminPricing error:", err);
+    return [];
+  }
+}
+
+export async function saveAdminPricing(pricingList) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/pricing/`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ pricing: pricingList }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+
