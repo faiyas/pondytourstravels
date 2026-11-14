@@ -116,8 +116,8 @@ def admin_leads_list(request):
             'travelDate': str(lead.travel_date),
             'preferredTime': str(lead.preferred_time),
             'vehicleType': lead.vehicle_type,
-            'distanceKm': float(lead.distance_km),
-            'estimatedFare': float(lead.estimated_fare),
+            'distanceKm': round(float(lead.distance_km)),
+            'estimatedFare': round(float(lead.estimated_fare)),
             'status': lead.status,
             'whatsappClicked': lead.whatsapp_clicked,
             'whatsappClickedAt': lead.whatsapp_clicked_at.isoformat() if lead.whatsapp_clicked_at else None,
@@ -174,13 +174,13 @@ def admin_bookings_list(request):
             'travelDate': str(b.lead.travel_date),
             'preferredTime': str(b.lead.preferred_time),
             'vehicleType': b.lead.vehicle_type,
-            'estimatedFare': float(b.lead.estimated_fare),
+            'estimatedFare': round(float(b.lead.estimated_fare)),
             'driverName': b.driver_name,
             'driverPhone': b.driver_phone,
             'vehicleNumber': b.vehicle_number,
-            'actualFare': float(b.actual_fare) if b.actual_fare else float(b.lead.estimated_fare),
-            'advancePaid': float(b.advance_paid),
-            'balanceAmount': float(b.balance_amount),
+            'actualFare': round(float(b.actual_fare)) if b.actual_fare else round(float(b.lead.estimated_fare)),
+            'advancePaid': round(float(b.advance_paid)),
+            'balanceAmount': round(float(b.balance_amount)),
             'adminNotes': b.admin_notes,
             'createdAt': b.created_at.isoformat(),
         })
@@ -209,11 +209,11 @@ def admin_booking_update(request, pk):
     if 'vehicleNumber' in data:
         booking.vehicle_number = data['vehicleNumber']
     if 'actualFare' in data and data['actualFare'] is not None:
-        booking.actual_fare = float(data['actualFare'])
+        booking.actual_fare = round(float(data['actualFare']))
     if 'advancePaid' in data and data['advancePaid'] is not None:
-        booking.advance_paid = float(data['advancePaid'])
+        booking.advance_paid = round(float(data['advancePaid']))
     if 'balanceAmount' in data and data['balanceAmount'] is not None:
-        booking.balance_amount = float(data['balanceAmount'])
+        booking.balance_amount = round(float(data['balanceAmount']))
     if 'adminNotes' in data:
         booking.admin_notes = data['adminNotes']
 

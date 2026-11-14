@@ -11,6 +11,7 @@ import {
   updateBookingDetails,
   fetchAdminPricing,
   saveAdminPricing,
+  trackAnalyticsEvent,
 } from "../../api";
 import { toast } from "sonner";
 import {
@@ -36,6 +37,17 @@ import {
   DollarSign,
   UserCheck,
 } from "lucide-react";
+
+// Helpers for numeric rounding & WhatsApp formatting
+const roundVal = (val) => Math.round(Number(val) || 0);
+
+const cleanPhoneForWhatsApp = (phone) => {
+  if (!phone) return "";
+  let digits = String(phone).replace(/[^0-9]/g, "");
+  if (digits.length === 10) digits = "91" + digits;
+  else if (digits.length === 11 && digits.startsWith("0")) digits = "91" + digits.slice(1);
+  return digits;
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -138,19 +150,144 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleOpenEditModal = (booking) => {
+    const fare = roundVal(booking.actualFare ?? booking.estimatedFare ?? 0);
+    const advance = roundVal(booking.advancePaid ?? 0);
+    const balance = Math.max(0, fare - advance);
+    setEditingBooking({
+      ...booking,
+      actualFare: fare,
+      advancePaid: advance,
+      balanceAmount: balance,
+    });
+  };
+
+  const handleDriverFieldChange = (field, value) => {
+    setEditingBooking((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, [field]: value };
+      // Auto-assign status to driver_assigned when driver info is entered
+      if (
+        (field === "driverName" || field === "driverPhone" || field === "vehicleNumber") &&
+        value.trim() !== ""
+      ) {
+        if (prev.status === "pending" || prev.status === "confirmed") {
+          updated.status = "driver_assigned";
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleSendDriverWhatsApp = (b) => {
+    if (!b?.driverPhone) {
+      toast.error("Please enter a Driver Phone number first");
+      return;
+    }
+    const cleanPhone = cleanPhoneForWhatsApp(b.driverPhone);
+    if (cleanPhone.length < 10) {
+      toast.error("Invalid driver phone number. Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    const fare = roundVal(b.actualFare ?? b.estimatedFare ?? 0);
+    const advance = roundVal(b.advancePaid ?? 0);
+    const balance = roundVal(b.balanceAmount ?? Math.max(0, fare - advance));
+
+    const message = 
+`🚖 *PONDY TOURS & TRAVELS - DUTY ASSIGNMENT*
+━━━━━━━━━━━━━━━━━━━━━━
+📋 *Duty / Booking ID:* #${b.bookingId}
+👤 *Customer:* ${b.customerName}
+📞 *Customer Mobile:* ${b.customerPhone}
+
+📍 *Pickup Location:* ${b.pickup}
+🏁 *Drop Location:* ${b.drop}
+📅 *Date & Time:* ${b.travelDate} at ${b.preferredTime}
+🚗 *Vehicle Type:* ${(b.vehicleType || "CAB").toUpperCase()}
+🚘 *Vehicle Reg:* ${b.vehicleNumber || "Assigned"}
+
+💰 *FARE & COLLECTION DETAILS:*
+• Total Trip Fare: ₹${fare}
+• Advance Collected: ₹${advance}
+• *Cash/UPI to Collect from Customer:* ₹${balance}
+${b.adminNotes ? `\n📝 *Special Instructions:* ${b.adminNotes}` : ""}
+━━━━━━━━━━━━━━━━━━━━━━
+*Pondy Tours & Travels Dispatch Desk*
+📞 Helpline: +91 90252 32453
+🌐 pondytourstravels.com`;
+
+    trackAnalyticsEvent("admin_driver_whatsapp_dispatch", "/admin", {
+      booking_id: b.bookingId,
+      driver_name: b.driverName,
+      driver_phone: cleanPhone,
+      total_fare: fare,
+      balance_amount: balance,
+    });
+
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    toast.success(`Opening WhatsApp for driver ${b.driverName || b.driverPhone}`);
+  };
+
+  const handleSendCustomerWhatsApp = (b) => {
+    if (!b?.customerPhone) {
+      toast.error("Customer phone number is missing");
+      return;
+    }
+    const cleanPhone = cleanPhoneForWhatsApp(b.customerPhone);
+    const fare = roundVal(b.actualFare ?? b.estimatedFare ?? 0);
+    const advance = roundVal(b.advancePaid ?? 0);
+    const balance = roundVal(b.balanceAmount ?? Math.max(0, fare - advance));
+
+    const message =
+`🚖 *PONDY TOURS & TRAVELS - TRIP CONFIRMATION*
+━━━━━━━━━━━━━━━━━━━━━━
+Dear *${b.customerName}*, your trip booking is confirmed!
+
+📋 *Booking ID:* ${b.bookingId}
+📍 *Pickup Location:* ${b.pickup}
+🏁 *Drop Location:* ${b.drop}
+📅 *Date & Time:* ${b.travelDate} at ${b.preferredTime}
+🚗 *Vehicle Type:* ${(b.vehicleType || "CAB").toUpperCase()}
+${b.vehicleNumber ? `🚘 *Vehicle Reg No:* ${b.vehicleNumber}\n` : ""}${b.driverName ? `👨‍✈️ *Driver Assigned:* ${b.driverName} (${b.driverPhone || "Will call you shortly"})\n` : "👨‍✈️ *Driver Details:* Will be dispatched before departure\n"}
+💰 *FARE DETAILS:*
+• Total Fare: ₹${fare}
+• Advance Paid: ₹${advance}
+• *Balance Payable to Driver:* ₹${balance}
+━━━━━━━━━━━━━━━━━━━━━━
+Have a pleasant and safe journey with us!
+📞 24/7 Helpline: +91 90252 32453
+🌐 pondytourstravels.com`;
+
+    trackAnalyticsEvent("admin_customer_whatsapp_dispatch", "/admin", {
+      booking_id: b.bookingId,
+      customer_phone: cleanPhone,
+      fare: fare,
+    });
+
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    toast.success(`Opening WhatsApp voucher for ${b.customerName}`);
+  };
+
   const handleSaveBookingModal = async (e) => {
     e.preventDefault();
     if (!editingBooking) return;
     setSavingBooking(true);
+    const actualFare = roundVal(editingBooking.actualFare);
+    const advancePaid = roundVal(editingBooking.advancePaid);
+    const balanceAmount = roundVal(editingBooking.balanceAmount ?? Math.max(0, actualFare - advancePaid));
+
     try {
       const res = await updateBookingDetails(editingBooking.id, {
         status: editingBooking.status,
         driverName: editingBooking.driverName,
         driverPhone: editingBooking.driverPhone,
         vehicleNumber: editingBooking.vehicleNumber,
-        actualFare: editingBooking.actualFare,
-        advancePaid: editingBooking.advancePaid,
-        balanceAmount: editingBooking.balanceAmount,
+        actualFare: actualFare,
+        advancePaid: advancePaid,
+        balanceAmount: balanceAmount,
         adminNotes: editingBooking.adminNotes,
       });
       if (res.success) {
@@ -591,28 +728,36 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 flex gap-2">
+                    <div className="mt-4 pt-3 flex items-center gap-2">
                       <button
-                        onClick={() => setEditingBooking({ ...b })}
-                        className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                        onClick={() => handleOpenEditModal(b)}
+                        className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Assign Driver / Edit</span>
                       </button>
 
-                      <a
-                        href={`https://wa.me/${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                          `*Pondy Tours & Travels - Trip Confirmation*\nBooking ID: ${b.bookingId}\nRoute: ${b.pickup} to ${b.drop}\nDate: ${b.travelDate} ${b.preferredTime}\nVehicle: ${b.vehicleType.toUpperCase()}\nEstimated Fare: ₹${b.actualFare}\n${
-                            b.driverName ? `Driver: ${b.driverName} (${b.driverPhone})\nVehicle No: ${b.vehicleNumber}` : "Driver details will be dispatched shortly."
-                          }`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center justify-center"
-                        title="Send WhatsApp Voucher"
+                      {b.driverPhone && (
+                        <button
+                          type="button"
+                          onClick={() => handleSendDriverWhatsApp(b)}
+                          className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                          title="Send Duty Assignment to Driver on WhatsApp"
+                        >
+                          <Car className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Driver</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendCustomerWhatsApp(b)}
+                        className="px-3 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        title="Send Voucher to Customer on WhatsApp"
                       >
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Customer</span>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -780,7 +925,7 @@ export default function AdminDashboard() {
                     type="text"
                     placeholder="E.g. Murugan"
                     value={editingBooking.driverName || ""}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, driverName: e.target.value })}
+                    onChange={(e) => handleDriverFieldChange("driverName", e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
@@ -793,7 +938,7 @@ export default function AdminDashboard() {
                     type="text"
                     placeholder="+91 98765 43210"
                     value={editingBooking.driverPhone || ""}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, driverPhone: e.target.value })}
+                    onChange={(e) => handleDriverFieldChange("driverPhone", e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
@@ -807,7 +952,7 @@ export default function AdminDashboard() {
                   type="text"
                   placeholder="PY-01-AB-1234"
                   value={editingBooking.vehicleNumber || ""}
-                  onChange={(e) => setEditingBooking({ ...editingBooking, vehicleNumber: e.target.value.toUpperCase() })}
+                  onChange={(e) => handleDriverFieldChange("vehicleNumber", e.target.value.toUpperCase())}
                   className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold uppercase"
                 />
               </div>
@@ -819,8 +964,16 @@ export default function AdminDashboard() {
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.actualFare || 0}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, actualFare: parseFloat(e.target.value) || 0 })}
+                    value={editingBooking.actualFare ?? 0}
+                    onChange={(e) => {
+                      const fare = roundVal(e.target.value);
+                      const adv = roundVal(editingBooking.advancePaid);
+                      setEditingBooking({
+                        ...editingBooking,
+                        actualFare: fare,
+                        balanceAmount: Math.max(0, fare - adv),
+                      });
+                    }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
@@ -831,11 +984,15 @@ export default function AdminDashboard() {
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.advancePaid || 0}
+                    value={editingBooking.advancePaid ?? 0}
                     onChange={(e) => {
-                      const adv = parseFloat(e.target.value) || 0;
-                      const bal = (editingBooking.actualFare || 0) - adv;
-                      setEditingBooking({ ...editingBooking, advancePaid: adv, balanceAmount: bal });
+                      const adv = roundVal(e.target.value);
+                      const fare = roundVal(editingBooking.actualFare);
+                      setEditingBooking({
+                        ...editingBooking,
+                        advancePaid: adv,
+                        balanceAmount: Math.max(0, fare - adv),
+                      });
                     }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
@@ -847,8 +1004,14 @@ export default function AdminDashboard() {
                   </label>
                   <input
                     type="number"
-                    value={editingBooking.balanceAmount || 0}
-                    onChange={(e) => setEditingBooking({ ...editingBooking, balanceAmount: parseFloat(e.target.value) || 0 })}
+                    value={editingBooking.balanceAmount ?? 0}
+                    onChange={(e) => {
+                      const bal = roundVal(e.target.value);
+                      setEditingBooking({
+                        ...editingBooking,
+                        balanceAmount: bal,
+                      });
+                    }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold"
                   />
                 </div>
@@ -865,6 +1028,46 @@ export default function AdminDashboard() {
                   onChange={(e) => setEditingBooking({ ...editingBooking, adminNotes: e.target.value })}
                   className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-medium resize-none"
                 />
+              </div>
+
+              {/* Instant WhatsApp Dispatch Panel */}
+              <div className="bg-muted/50 p-4 rounded-2xl border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black uppercase text-foreground">
+                    <MessageCircle className="w-4 h-4 text-green-600" />
+                    <span>WhatsApp Dispatch</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    Opens installed WhatsApp
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSendDriverWhatsApp(editingBooking)}
+                    disabled={!editingBooking.driverPhone}
+                    className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <Car className="w-4 h-4" />
+                    <span>Send Duty to Driver</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSendCustomerWhatsApp(editingBooking)}
+                    className="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Send Voucher to Customer</span>
+                  </button>
+                </div>
+
+                {!editingBooking.driverPhone && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                    💡 Enter driver phone above to send the duty assignment slip directly to driver's WhatsApp.
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 flex gap-3">

@@ -302,7 +302,8 @@ export default function BookingForm() {
           return false;
         }
 
-        setDistance(tripDistanceKm.toFixed(2));
+        const roundedDistance = Math.round(tripDistanceKm);
+        setDistance(String(roundedDistance));
 
         // 3. Compute Fare based on configured vehicle rates and allowances
         const vehicleConfig = pricingMatrix[formData.vehicleType] || DEFAULT_PRICING_MATRIX[formData.vehicleType] || { oneway: 14, driverAllowance: 400 };
@@ -321,17 +322,17 @@ export default function BookingForm() {
           baseFare = baseFare * 2;
         }
 
-        const computedFare = baseFare.toFixed(2);
+        const computedFare = String(Math.round(baseFare));
         setEstimatedFare(computedFare);
 
         trackAnalyticsEvent("fare_calculate", location.pathname, {
           vehicle: formData.vehicleType,
-          distance: tripDistanceKm,
+          distance: roundedDistance,
           fare: computedFare,
         });
 
         toast.success(
-          `Distance calculated: ${tripDistanceKm.toFixed(1)} km | Fare: ₹${computedFare}`,
+          `Distance calculated: ${roundedDistance} km | Fare: ₹${Number(computedFare).toLocaleString('en-IN')}`,
           { duration: 5000 }
         );
         return true;
